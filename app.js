@@ -152,7 +152,8 @@ function renderTasks() {
             });
         }
         
-        statsBar.style.display = 'none';
+        // Всегда показываем statsBar, даже если нет задач
+        statsBar.style.display = 'flex';
         return;
     }
     
@@ -161,6 +162,7 @@ function renderTasks() {
         taskList.appendChild(taskElement);
     });
     
+    // Показываем statsBar
     statsBar.style.display = 'flex';
 }
 
@@ -402,6 +404,9 @@ function updateStats() {
     activeTasks.textContent = active;
     completedTasks.textContent = completed;
     overdueTasks.textContent = overdue;
+    
+    // Показываем statsBar после обновления статистики
+    statsBar.style.display = 'flex';
 }
 
 // Функции для работы с задачами
