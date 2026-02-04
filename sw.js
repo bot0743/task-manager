@@ -1,7 +1,9 @@
-const CACHE_NAME = 'task-manager-v2';
+const CACHE_NAME = 'task-manager-v3';
 const urlsToCache = [
   './',
   './index.html',
+  './style.css',
+  './app.js',
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
