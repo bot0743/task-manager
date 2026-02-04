@@ -1,1 +1,1263 @@
-
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#3B82F6">
+    <title>Task Manager Pro</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #3B82F6;
+            --primary-dark: #2563EB;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --gray-900: #111827;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--gray-800);
+            overflow-x: hidden;
+        }
+        
+        /* Login Screen */
+        .login-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.5s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .app-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            color: white;
+            font-size: 36px;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+        
+        .login-title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 10px;
+        }
+        
+        .login-subtitle {
+            text-align: center;
+            color: var(--gray-600);
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--gray-700);
+            font-size: 14px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: var(--gray-50);
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        /* Main App Screen (Hidden by default) */
+        .app-screen {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+            background: var(--gray-50);
+        }
+        
+        /* Header */
+        .app-header {
+            background: white;
+            padding: 16px 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .header-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .app-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .icon-btn:hover {
+            background: var(--gray-200);
+        }
+        
+        /* Filters */
+        .filters {
+            padding: 15px 20px;
+            background: white;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        
+        .filters::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 2px solid var(--gray-200);
+            background: white;
+            font-weight: 500;
+            font-size: 14px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        /* Task List */
+        .task-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
+            text-align: center;
+            color: var(--gray-600);
+        }
+        
+        .empty-icon {
+            font-size: 60px;
+            color: var(--gray-300);
+            margin-bottom: 20px;
+        }
+        
+        .task-item {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid var(--gray-300);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .task-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-item.high {
+            border-left-color: var(--danger);
+        }
+        
+        .task-item.medium {
+            border-left-color: var(--warning);
+        }
+        
+        .task-item.low {
+            border-left-color: var(--success);
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .task-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--gray-900);
+            flex: 1;
+            margin-right: 10px;
+        }
+        
+        .task-title.completed {
+            text-decoration: line-through;
+            color: var(--gray-500);
+        }
+        
+        .task-priority {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .task-priority.high {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+        
+        .task-priority.medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+        
+        .task-priority.low {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .task-description {
+            color: var(--gray-600);
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .task-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        
+        .task-deadline {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .task-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .action-btn:hover {
+            background: var(--gray-200);
+        }
+        
+        .action-btn.complete {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+        
+        .action-btn.delete {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+        
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary), #8B5CF6);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);
+            border: none;
+            cursor: pointer;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.6);
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.4s ease;
+        }
+        
+        .modal-header {
+            padding: 24px 24px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-600);
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .close-btn:hover {
+            background: var(--gray-100);
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .form-row > div {
+            flex: 1;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .modal-body {
+                padding: 20px;
+            }
+            
+            .login-container {
+                padding: 30px 20px;
+            }
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--gray-800);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            z-index: 1001;
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="loginScreen">
+        <div class="login-container">
+            <div class="app-icon">
+                <i class="fas fa-tasks"></i>
+            </div>
+            
+            <h1 class="login-title">Task Manager Pro</h1>
+            <p class="login-subtitle">Управляйте задачами в команде</p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="accessKey">Ключ доступа</label>
+                    <input 
+                        type="password" 
+                        id="accessKey" 
+                        class="form-input" 
+                        placeholder="Введите секретный ключ" 
+                        required
+                        autocomplete="off"
+                    >
+                </div>
+                
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    <span id="loginText">Войти в систему</span>
+                    <div id="loginSpinner" class="spinner" style="display: none;"></div>
+                </button>
+            </form>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 12px; color: var(--gray-500);">
+                <p>Для доступа обратитесь к администратору</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main App Screen -->
+    <div class="app-screen" id="appScreen">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="header-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <h1 class="app-title">Task Manager</h1>
+            </div>
+            
+            <div class="header-actions">
+                <button class="icon-btn" id="refreshBtn" title="Обновить">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button class="icon-btn" id="logoutBtn" title="Выйти">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </header>
+        
+        <!-- Filters -->
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Все задачи</button>
+            <button class="filter-btn" data-filter="high">Высокий приоритет</button>
+            <button class="filter-btn" data-filter="medium">Средний приоритет</button>
+            <button class="filter-btn" data-filter="low">Низкий приоритет</button>
+            <button class="filter-btn" data-filter="pending">Активные</button>
+            <button class="filter-btn" data-filter="completed">Завершенные</button>
+        </div>
+        
+        <!-- Task List -->
+        <div class="task-list" id="taskList">
+            <!-- Tasks will be loaded here -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h3>Нет задач</h3>
+                <p>Создайте свою первую задачу</p>
+            </div>
+        </div>
+        
+        <!-- Floating Action Button -->
+        <button class="fab" id="addTaskBtn">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+    
+    <!-- Add/Edit Task Modal -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Новая задача</h2>
+                <button class="close-btn" id="closeModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="taskForm">
+                    <div class="form-group">
+                        <label class="form-label" for="taskTitle">Название задачи *</label>
+                        <input 
+                            type="text" 
+                            id="taskTitle" 
+                            class="form-input" 
+                            placeholder="Что нужно сделать?" 
+                            required
+                            maxlength="100"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="taskDescription">Описание (необязательно)</label>
+                        <textarea 
+                            id="taskDescription" 
+                            class="form-input" 
+                            placeholder="Детали задачи..." 
+                            rows="3"
+                            maxlength="500"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="taskPriority">Приоритет *</label>
+                            <select id="taskPriority" class="form-input" required>
+                                <option value="">Выберите приоритет</option>
+                                <option value="high">Высокий</option>
+                                <option value="medium">Средний</option>
+                                <option value="low">Низкий</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="taskDeadline">Дедлайн *</label>
+                            <input 
+                                type="datetime-local" 
+                                id="taskDeadline" 
+                                class="form-input" 
+                                required
+                            >
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="taskTags">Теги (через запятую)</label>
+                        <input 
+                            type="text" 
+                            id="taskTags" 
+                            class="form-input" 
+                            placeholder="работа, срочно, проект"
+                        >
+                    </div>
+                    
+                    <input type="hidden" id="taskId">
+                    
+                    <button type="submit" class="btn btn-primary" id="saveTaskBtn">
+                        <span id="saveTaskText">Сохранить задачу</span>
+                        <div id="saveTaskSpinner" class="spinner" style="display: none;"></div>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // Конфигурация
+        const CONFIG = {
+            ACCESS_KEY: "TASKMANAGER2024", // Секретный ключ для доступа (измените на свой)
+            FIREBASE_CONFIG: {
+                // Здесь будет ваша конфигурация Firebase
+                // Замените на ваши реальные значения
+                apiKey: "YOUR_API_KEY",
+                authDomain: "your-app.firebaseapp.com",
+                projectId: "your-project-id",
+                storageBucket: "your-app.appspot.com",
+                messagingSenderId: "123456789",
+                appId: "1:123456789:web:abcdef123456"
+            },
+            COLLECTION_NAME: "tasks"
+        };
+        
+        // Глобальные переменные
+        let tasks = [];
+        let currentFilter = "all";
+        let editingTaskId = null;
+        
+        // DOM Elements
+        const loginScreen = document.getElementById('loginScreen');
+        const appScreen = document.getElementById('appScreen');
+        const loginForm = document.getElementById('loginForm');
+        const accessKeyInput = document.getElementById('accessKey');
+        const taskList = document.getElementById('taskList');
+        const emptyState = document.getElementById('emptyState');
+        const taskModal = document.getElementById('taskModal');
+        const taskForm = document.getElementById('taskForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const filters = document.querySelectorAll('.filter-btn');
+        const toast = document.getElementById('toast');
+        
+        // Firebase инициализация (закомментировано до настройки)
+        // let db;
+        // function initFirebase() {
+        //     firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
+        //     db = firebase.firestore();
+        // }
+        
+        // Имитация базы данных для демо
+        let mockDB = JSON.parse(localStorage.getItem('taskManagerDB') || '{"tasks": []}');
+        
+        // Временная функция для демо
+        async function saveTaskToDB(task) {
+            if (!task.id) {
+                task.id = Date.now().toString();
+                task.createdAt = new Date().toISOString();
+                mockDB.tasks.push(task);
+            } else {
+                const index = mockDB.tasks.findIndex(t => t.id === task.id);
+                if (index !== -1) {
+                    mockDB.tasks[index] = task;
+                }
+            }
+            localStorage.setItem('taskManagerDB', JSON.stringify(mockDB));
+            return task;
+        }
+        
+        async function deleteTaskFromDB(taskId) {
+            mockDB.tasks = mockDB.tasks.filter(task => task.id !== taskId);
+            localStorage.setItem('taskManagerDB', JSON.stringify(mockDB));
+        }
+        
+        async function getTasksFromDB() {
+            return mockDB.tasks;
+        }
+        
+        // Авторизация
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const accessKey = accessKeyInput.value.trim();
+            const loginBtn = document.getElementById('loginBtn');
+            const loginText = document.getElementById('loginText');
+            const loginSpinner = document.getElementById('loginSpinner');
+            
+            if (accessKey === CONFIG.ACCESS_KEY) {
+                // Показываем индикатор загрузки
+                loginText.style.display = 'none';
+                loginSpinner.style.display = 'inline-block';
+                
+                // Имитация загрузки
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Сохраняем ключ в sessionStorage
+                sessionStorage.setItem('taskManagerAuth', accessKey);
+                
+                // Переходим в приложение
+                loginScreen.style.display = 'none';
+                appScreen.style.display = 'flex';
+                
+                // Инициализируем Firebase (раскомментировать после настройки)
+                // initFirebase();
+                
+                // Загружаем задачи
+                await loadTasks();
+                
+                // Скрываем индикатор
+                loginText.style.display = 'inline';
+                loginSpinner.style.display = 'none';
+                
+                showToast('Добро пожаловать!', 'success');
+            } else {
+                showToast('Неверный ключ доступа', 'error');
+                accessKeyInput.focus();
+            }
+        });
+        
+        // Проверка авторизации при загрузке
+        window.addEventListener('load', () => {
+            const savedAuth = sessionStorage.getItem('taskManagerAuth');
+            
+            if (savedAuth === CONFIG.ACCESS_KEY) {
+                loginScreen.style.display = 'none';
+                appScreen.style.display = 'flex';
+                // initFirebase();
+                loadTasks();
+            } else {
+                loginScreen.style.display = 'flex';
+                appScreen.style.display = 'none';
+            }
+        });
+        
+        // Выход из системы
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('taskManagerAuth');
+            loginScreen.style.display = 'flex';
+            appScreen.style.display = 'none';
+            accessKeyInput.value = '';
+            showToast('Вы вышли из системы', 'info');
+        });
+        
+        // Обновление списка задач
+        refreshBtn.addEventListener('click', () => {
+            loadTasks();
+            showToast('Список обновлен', 'success');
+        });
+        
+        // Фильтрация задач
+        filters.forEach(filter => {
+            filter.addEventListener('click', () => {
+                filters.forEach(f => f.classList.remove('active'));
+                filter.classList.add('active');
+                currentFilter = filter.dataset.filter;
+                renderTasks();
+            });
+        });
+        
+        // Открытие модального окна для новой задачи
+        addTaskBtn.addEventListener('click', () => {
+            editingTaskId = null;
+            modalTitle.textContent = 'Новая задача';
+            taskForm.reset();
+            document.getElementById('taskDeadline').value = getDefaultDeadline();
+            taskModal.classList.add('active');
+        });
+        
+        // Закрытие модального окна
+        closeModalBtn.addEventListener('click', () => {
+            taskModal.classList.remove('active');
+        });
+        
+        // Закрытие модального окна при клике на фон
+        taskModal.addEventListener('click', (e) => {
+            if (e.target === taskModal) {
+                taskModal.classList.remove('active');
+            }
+        });
+        
+        // Сохранение задачи
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const saveTaskBtn = document.getElementById('saveTaskBtn');
+            const saveTaskText = document.getElementById('saveTaskText');
+            const saveTaskSpinner = document.getElementById('saveTaskSpinner');
+            
+            // Показываем индикатор
+            saveTaskText.style.display = 'none';
+            saveTaskSpinner.style.display = 'inline-block';
+            
+            const taskData = {
+                title: document.getElementById('taskTitle').value.trim(),
+                description: document.getElementById('taskDescription').value.trim(),
+                priority: document.getElementById('taskPriority').value,
+                deadline: document.getElementById('taskDeadline').value,
+                tags: document.getElementById('taskTags').value
+                    .split(',')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag.length > 0),
+                completed: false
+            };
+            
+            if (editingTaskId) {
+                taskData.id = editingTaskId;
+            }
+            
+            try {
+                // Сохранение в Firebase (закомментировано)
+                // if (editingTaskId) {
+                //     await db.collection(CONFIG.COLLECTION_NAME).doc(editingTaskId).update(taskData);
+                // } else {
+                //     taskData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                //     await db.collection(CONFIG.COLLECTION_NAME).add(taskData);
+                // }
+                
+                // Демо версия
+                await saveTaskToDB(taskData);
+                
+                // Закрываем модальное окно
+                taskModal.classList.remove('active');
+                
+                // Обновляем список
+                await loadTasks();
+                
+                showToast(editingTaskId ? 'Задача обновлена' : 'Задача создана', 'success');
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                showToast('Ошибка сохранения задачи', 'error');
+            } finally {
+                // Скрываем индикатор
+                saveTaskText.style.display = 'inline';
+                saveTaskSpinner.style.display = 'none';
+            }
+        });
+        
+        // Загрузка задач
+        async function loadTasks() {
+            try {
+                // Загрузка из Firebase (закомментировано)
+                // const snapshot = await db.collection(CONFIG.COLLECTION_NAME)
+                //     .orderBy('priority', 'desc')
+                //     .orderBy('deadline')
+                //     .get();
+                
+                // tasks = snapshot.docs.map(doc => ({
+                //     id: doc.id,
+                //     ...doc.data()
+                // }));
+                
+                // Демо версия
+                tasks = await getTasksFromDB();
+                
+                // Сортируем задачи
+                sortTasks();
+                
+                // Рендерим задачи
+                renderTasks();
+            } catch (error) {
+                console.error('Ошибка загрузки задач:', error);
+                showToast('Ошибка загрузки задач', 'error');
+            }
+        }
+        
+        // Сортировка задач
+        function sortTasks() {
+            const priorityOrder = { high: 3, medium: 2, low: 1 };
+            
+            tasks.sort((a, b) => {
+                // Сначала невыполненные, затем выполненные
+                if (a.completed !== b.completed) {
+                    return a.completed ? 1 : -1;
+                }
+                
+                // Затем по приоритету
+                const priorityDiff = priorityOrder[b.priority] - priorityOrder[a.priority];
+                if (priorityDiff !== 0) return priorityDiff;
+                
+                // Затем по дедлайну
+                return new Date(a.deadline) - new Date(b.deadline);
+            });
+        }
+        
+        // Отображение задач
+        function renderTasks() {
+            // Фильтрация
+            let filteredTasks = tasks;
+            
+            switch (currentFilter) {
+                case 'high':
+                    filteredTasks = tasks.filter(task => task.priority === 'high');
+                    break;
+                case 'medium':
+                    filteredTasks = tasks.filter(task => task.priority === 'medium');
+                    break;
+                case 'low':
+                    filteredTasks = tasks.filter(task => task.priority === 'low');
+                    break;
+                case 'pending':
+                    filteredTasks = tasks.filter(task => !task.completed);
+                    break;
+                case 'completed':
+                    filteredTasks = tasks.filter(task => task.completed);
+                    break;
+            }
+            
+            // Очищаем список
+            taskList.innerHTML = '';
+            
+            if (filteredTasks.length === 0) {
+                taskList.appendChild(emptyState.cloneNode(true));
+                emptyState.style.display = 'flex';
+                return;
+            }
+            
+            // Создаем элементы задач
+            filteredTasks.forEach(task => {
+                const taskElement = createTaskElement(task);
+                taskList.appendChild(taskElement);
+            });
+        }
+        
+        // Создание элемента задачи
+        function createTaskElement(task) {
+            const div = document.createElement('div');
+            div.className = `task-item ${task.priority} ${task.completed ? 'completed' : ''}`;
+            
+            // Форматирование даты
+            const deadlineDate = new Date(task.deadline);
+            const formattedDate = deadlineDate.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // Теги
+            const tagsHtml = task.tags && task.tags.length > 0 
+                ? `<div style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
+                    ${task.tags.map(tag => 
+                        `<span style="background: var(--gray-100); padding: 2px 8px; border-radius: 10px; font-size: 11px; color: var(--gray-600);">
+                            ${tag}
+                        </span>`
+                    ).join('')}
+                   </div>`
+                : '';
+            
+            div.innerHTML = `
+                <div class="task-header">
+                    <div class="task-title ${task.completed ? 'completed' : ''}">${task.title}</div>
+                    <div class="task-priority ${task.priority}">${getPriorityText(task.priority)}</div>
+                </div>
+                
+                ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
+                
+                ${tagsHtml}
+                
+                <div class="task-footer">
+                    <div class="task-deadline">
+                        <i class="far fa-clock" style="font-size: 12px;"></i>
+                        <span>${formattedDate}</span>
+                    </div>
+                    
+                    <div class="task-actions">
+                        <button class="action-btn complete" data-id="${task.id}" title="${task.completed ? 'Возобновить' : 'Завершить'}">
+                            <i class="fas fa-${task.completed ? 'undo' : 'check'}"></i>
+                        </button>
+                        <button class="action-btn edit" data-id="${task.id}" title="Редактировать">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" data-id="${task.id}" title="Удалить">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Добавляем обработчики событий
+            const completeBtn = div.querySelector('.complete');
+            const editBtn = div.querySelector('.edit');
+            const deleteBtn = div.querySelector('.delete');
+            
+            completeBtn.addEventListener('click', () => toggleTaskComplete(task.id));
+            editBtn.addEventListener('click', () => editTask(task.id));
+            deleteBtn.addEventListener('click', () => deleteTask(task.id));
+            
+            return div;
+        }
+        
+        // Переключение статуса задачи
+        async function toggleTaskComplete(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            task.completed = !task.completed;
+            
+            try {
+                // Обновление в Firebase (закомментировано)
+                // await db.collection(CONFIG.COLLECTION_NAME).doc(taskId).update({
+                //     completed: task.completed
+                // });
+                
+                // Демо версия
+                await saveTaskToDB(task);
+                
+                // Обновляем список
+                sortTasks();
+                renderTasks();
+                
+                showToast(task.completed ? 'Задача завершена' : 'Задача возобновлена', 'success');
+            } catch (error) {
+                console.error('Ошибка обновления:', error);
+                showToast('Ошибка обновления задачи', 'error');
+            }
+        }
+        
+        // Редактирование задачи
+        function editTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            editingTaskId = taskId;
+            modalTitle.textContent = 'Редактировать задачу';
+            
+            // Заполняем форму
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskDescription').value = task.description || '';
+            document.getElementById('taskPriority').value = task.priority;
+            
+            // Форматируем дату для input[type="datetime-local"]
+            const deadlineDate = new Date(task.deadline);
+            const formattedDate = deadlineDate.toISOString().slice(0, 16);
+            document.getElementById('taskDeadline').value = formattedDate;
+            
+            document.getElementById('taskTags').value = task.tags ? task.tags.join(', ') : '';
+            document.getElementById('taskId').value = taskId;
+            
+            // Открываем модальное окно
+            taskModal.classList.add('active');
+        }
+        
+        // Удаление задачи
+        async function deleteTask(taskId) {
+            if (!confirm('Удалить эту задачу?')) return;
+            
+            try {
+                // Удаление из Firebase (закомментировано)
+                // await db.collection(CONFIG.COLLECTION_NAME).doc(taskId).delete();
+                
+                // Демо версия
+                await deleteTaskFromDB(taskId);
+                
+                // Удаляем из массива
+                tasks = tasks.filter(task => task.id !== taskId);
+                
+                // Обновляем список
+                renderTasks();
+                
+                showToast('Задача удалена', 'success');
+            } catch (error) {
+                console.error('Ошибка удаления:', error);
+                showToast('Ошибка удаления задачи', 'error');
+            }
+        }
+        
+        // Вспомогательные функции
+        function getPriorityText(priority) {
+            const texts = {
+                high: 'Высокий',
+                medium: 'Средний',
+                low: 'Низкий'
+            };
+            return texts[priority] || priority;
+        }
+        
+        function getDefaultDeadline() {
+            const now = new Date();
+            now.setHours(now.getHours() + 24); // Завтра в это же время
+            return now.toISOString().slice(0, 16);
+        }
+        
+        function showToast(message, type = 'info') {
+            toast.textContent = message;
+            toast.className = 'toast';
+            
+            // Добавляем цвет в зависимости от типа
+            if (type === 'success') {
+                toast.style.background = 'var(--success)';
+            } else if (type === 'error') {
+                toast.style.background = 'var(--danger)';
+            } else if (type === 'warning') {
+                toast.style.background = 'var(--warning)';
+            }
+            
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Регистрация Service Worker для PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => {
+                    console.log('Service Worker registration failed:', err);
+                });
+            });
+        }
+        
+        // Предотвращение выхода из приложения
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+    </script>
+</body>
+</html>
