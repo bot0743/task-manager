@@ -1,207 +1,258 @@
 // supabase-config.js
-const SUPABASE_URL = 'https://qaaxrfrfybysixsmbagt.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_dNCNU3K-sNZy0UmUVRhUxA_J7qHWjw3';
+(function() {
+    console.log('Загрузка Supabase конфигурации...');
+    
+    // Проверяем, загружена ли библиотека Supabase
+    if (typeof window.supabase === 'undefined') {
+        console.error('Supabase библиотека не загружена! Проверьте подключение.');
+        return;
+    }
 
-// Создаем клиент Supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
-  }
-});
+    const SUPABASE_URL = 'https://qaaxrfrfybysixsmbagt.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_dNCNU3K-sNZy0UmUVRhUxA_J7qHWjw3';
 
-// Глобальные переменные
-let currentUser = null;
+    // Создаем клиент Supabase
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: false  // Изменим на false для PWA
+        }
+    });
 
-// Аутентификация по паролю
-async function loginWithPassword(password) {
-    try {
-        console.log('Попытка входа с паролем:', password);
-        
-        // Создаем email из пароля для простоты
-        const email = `${password}@taskmanager.local`;
-        
-        // Пытаемся войти
-        const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
+    let currentUser = null;
 
-        if (loginError) {
-            console.log('Пользователь не найден, создаем нового...');
+    // Аутентификация по паролю
+    async function loginWithPassword(password) {
+        try {
+            console.log('Попытка входа с паролем:', password);
             
-            // Регистрируем нового пользователя
-            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            // Создаем email из пароля
+            const email = `${password}@taskmanager.local`;
+            
+            // Пытаемся войти
+            const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
                 email: email,
-                password: password,
-                options: {
-                    data: {
-                        display_name: `Пользователь ${password.substring(0, 8)}`
-                    }
-                }
+                password: password
             });
 
-            if (signUpError) {
-                console.error('Ошибка регистрации:', signUpError);
-                return { success: false, error: signUpError.message };
+            if (loginError) {
+                console.log('Пользователь не найден, создаем нового...');
+                
+                // Регистрируем нового пользователя
+                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            display_name: `User_${password}`
+                        }
+                    }
+                });
+
+                if (signUpError) {
+                    console.error('Ошибка регистрации:', signUpError);
+                    return { success: false, error: signUpError.message };
+                }
+                
+                console.log('Новый пользователь создан:', signUpData);
+                currentUser = signUpData.user;
+                return { success: true, user: signUpData.user };
             }
             
-            console.log('Новый пользователь создан:', signUpData);
-            currentUser = signUpData.user;
-            return { success: true, user: signUpData.user };
+            console.log('Вход успешен:', loginData.user.email);
+            currentUser = loginData.user;
+            return { success: true, user: loginData.user };
+            
+        } catch (error) {
+            console.error('Ошибка входа:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Выход из системы
+    async function logout() {
+        const { error } = await supabaseClient.auth.signOut();
+        currentUser = null;
+        return !error;
+    }
+
+    // Проверка активной сессии
+    async function checkSession() {
+        const { data, error } = await supabaseClient.auth.getSession();
+        console.log('Проверка сессии:', data);
+        
+        if (data.session) {
+            currentUser = data.session.user;
+            console.log('Пользователь найден:', currentUser.email);
+            return { success: true, user: currentUser };
+        }
+        return { success: false };
+    }
+
+    // Получение задач
+    async function getTasks() {
+        if (!currentUser) {
+            console.log('Не авторизован для получения задач');
+            return [];
         }
         
-        console.log('Вход успешен:', loginData);
-        currentUser = loginData.user;
-        return { success: true, user: loginData.user };
-        
-    } catch (error) {
-        console.error('Ошибка входа:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// Выход из системы
-async function logout() {
-    const { error } = await supabase.auth.signOut();
-    currentUser = null;
-    return !error;
-}
-
-// Получение задач
-async function getTasks() {
-    if (!currentUser) return [];
-    
-    try {
-        const { data, error } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .order('priority', { ascending: false })
-            .order('deadline', { ascending: true });
-        
-        if (error) throw error;
-        return data || [];
-    } catch (error) {
-        console.error('Ошибка получения задач:', error);
-        return [];
-    }
-}
-
-// Добавление задачи
-async function addTask(task) {
-    if (!currentUser) throw new Error('Не авторизован');
-    
-    const taskData = {
-        ...task,
-        user_id: currentUser.id,
-        deadline: new Date(task.deadline).toISOString()
-    };
-    
-    const { data, error } = await supabase
-        .from('tasks')
-        .insert([taskData])
-        .select()
-        .single();
-    
-    if (error) throw error;
-    return data;
-}
-
-// Обновление задачи
-async function updateTask(taskId, updates) {
-    const updateData = {
-        ...updates,
-        updated_at: new Date().toISOString()
-    };
-    
-    const { data, error } = await supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', taskId)
-        .select()
-        .single();
-    
-    if (error) throw error;
-    return data;
-}
-
-// Удаление задачи
-async function deleteTask(taskId) {
-    const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId);
-    
-    if (error) throw error;
-    return true;
-}
-
-// Подписка на обновления в реальном времени
-function subscribeToTasks(callback) {
-    if (!currentUser) return null;
-    
-    const subscription = supabase
-        .channel('tasks-channel')
-        .on('postgres_changes', 
-            {
-                event: '*',
-                schema: 'public',
-                table: 'tasks',
-                filter: `user_id=eq.${currentUser.id}`
-            },
-            (payload) => {
-                console.log('Real-time update:', payload);
-                callback(payload);
+        try {
+            console.log('Получение задач для пользователя:', currentUser.id);
+            
+            const { data, error } = await supabaseClient
+                .from('tasks')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .order('priority', { ascending: false })
+                .order('deadline', { ascending: true });
+            
+            if (error) {
+                console.error('Ошибка получения задач:', error);
+                throw error;
             }
-        )
-        .subscribe();
-    
-    return subscription;
-}
-
-// Экспорт задач
-function exportTasks(tasks) {
-    const data = {
-        exported_at: new Date().toISOString(),
-        tasks: tasks
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tasks_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// Проверка активной сессии
-async function checkSession() {
-    const { data, error } = await supabase.auth.getSession();
-    if (data.session) {
-        currentUser = data.session.user;
-        return { success: true, user: data.session.user };
+            
+            console.log('Задачи получены:', data ? data.length : 0);
+            return data || [];
+        } catch (error) {
+            console.error('Ошибка в getTasks:', error);
+            return [];
+        }
     }
-    return { success: false };
-}
 
-// Экспорт функций
-window.supabaseAuth = {
-    loginWithPassword,
-    logout,
-    getCurrentUser: () => currentUser,
-    getTasks,
-    addTask,
-    updateTask,
-    deleteTask,
-    subscribeToTasks,
-    exportTasks,
-    checkSession,
-    supabase
-};
+    // Добавление задачи
+    async function addTask(task) {
+        if (!currentUser) {
+            throw new Error('Не авторизован');
+        }
+        
+        const taskData = {
+            ...task,
+            user_id: currentUser.id,
+            deadline: new Date(task.deadline).toISOString()
+        };
+        
+        console.log('Добавление задачи:', taskData);
+        
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .insert([taskData])
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('Ошибка добавления задачи:', error);
+            throw error;
+        }
+        
+        return data;
+    }
 
-console.log('Supabase config loaded');
+    // Обновление задачи
+    async function updateTask(taskId, updates) {
+        const updateData = {
+            ...updates,
+            updated_at: new Date().toISOString()
+        };
+        
+        if (updates.deadline) {
+            updateData.deadline = new Date(updates.deadline).toISOString();
+        }
+        
+        console.log('Обновление задачи:', taskId, updateData);
+        
+        const { data, error } = await supabaseClient
+            .from('tasks')
+            .update(updateData)
+            .eq('id', taskId)
+            .select()
+            .single();
+        
+        if (error) {
+            console.error('Ошибка обновления задачи:', error);
+            throw error;
+        }
+        
+        return data;
+    }
+
+    // Удаление задачи
+    async function deleteTask(taskId) {
+        console.log('Удаление задачи:', taskId);
+        
+        const { error } = await supabaseClient
+            .from('tasks')
+            .delete()
+            .eq('id', taskId);
+        
+        if (error) {
+            console.error('Ошибка удаления задачи:', error);
+            throw error;
+        }
+        
+        return true;
+    }
+
+    // Подписка на обновления в реальном времени
+    function subscribeToTasks(callback) {
+        if (!currentUser) {
+            console.log('Не авторизован для подписки');
+            return null;
+        }
+        
+        console.log('Подписка на обновления для пользователя:', currentUser.id);
+        
+        const subscription = supabaseClient
+            .channel('tasks-channel')
+            .on('postgres_changes', 
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'tasks',
+                    filter: `user_id=eq.${currentUser.id}`
+                },
+                (payload) => {
+                    console.log('Real-time update получен:', payload);
+                    callback(payload);
+                }
+            )
+            .subscribe();
+        
+        return subscription;
+    }
+
+    // Экспорт задач
+    function exportTasks(tasks) {
+        const data = {
+            exported_at: new Date().toISOString(),
+            tasks: tasks
+        };
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tasks_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Экспорт функций в глобальную область видимости
+    window.supabaseAuth = {
+        loginWithPassword,
+        logout,
+        getCurrentUser: () => currentUser,
+        getTasks,
+        addTask,
+        updateTask,
+        deleteTask,
+        subscribeToTasks,
+        exportTasks,
+        checkSession,
+        supabase: supabaseClient
+    };
+
+    console.log('Supabase Auth инициализирован:', window.supabaseAuth);
+})();
