@@ -1,9 +1,8 @@
 {
   "name": "Task Manager Pro",
   "short_name": "Tasks",
-  "description": "Менедр задач с защищенным доступом",
-  "start_url": "/task-manager/",
-  "scope": "/task-manager/",
+  "description": "Менеджер задач с защищенным доступом",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#3B82F6",
   "theme_color": "#3B82F6",
