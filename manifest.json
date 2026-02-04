@@ -1,6 +1,6 @@
 {
   "name": "Task Manager Pro",
-  "short_name": "Tasks",
+  "short_name": "Task Manager",
   "description": "Менеджер задач с защищенным доступом",
   "start_url": ".",
   "display": "standalone",
