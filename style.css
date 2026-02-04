@@ -833,6 +833,13 @@ body {
         width: 36px;
         height: 36px;
     }
+
+    .fab {
+        bottom: 70px;
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+    }
     
     .filters {
         padding: 10px 15px;
@@ -845,10 +852,10 @@ body {
     #statsBar {
         padding: 10px 15px;
         font-size: 12px;
-        bottom: 90px; /* Чуть выше на маленьких экранах */
+        bottom: 90px;
     }
     
     .task-list {
-        padding-bottom: 140px; /* Меньше отступ на маленьких экранах */
+        padding-bottom: 110px;
     }
 }
