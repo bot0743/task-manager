@@ -31,6 +31,41 @@ const activeTasks = document.getElementById('activeTasks');
 const completedTasks = document.getElementById('completedTasks');
 const overdueTasks = document.getElementById('overdueTasks');
 
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM загружен, инициализация приложения...');
+    
+    // Проверяем существующую сессию через 1 секунду (даем время загрузиться supabase-config.js)
+    setTimeout(async () => {
+        try {
+            // Проверяем, загрузился ли supabaseAuth
+            if (typeof window.supabaseAuth === 'undefined') {
+                console.error('supabaseAuth не загружен!');
+                showToast('Ошибка загрузки приложения', 'error');
+                return;
+            }
+            
+            console.log('supabaseAuth загружен, проверяем сессию...');
+            
+            const sessionResult = await window.supabaseAuth.checkSession();
+            console.log('Результат проверки сессии:', sessionResult);
+            
+            if (sessionResult.success) {
+                currentUser = sessionResult.user;
+                currentUserBadge.textContent = `ID: ${currentUser.id.substring(0, 8)}`;
+                loginScreen.style.display = 'none';
+                appScreen.style.display = 'flex';
+                await loadTasks();
+                startRealtimeSubscription();
+                updateSyncStatus(true);
+            } else {
+                console.log('Сессия не найдена, показываем экран входа');
+            }
+        } catch (error) {
+            console.error('Ошибка инициализации:', error);
+        }
+    }, 1000);
+});
+
 // Инициализация
 async function init() {
     console.log('Инициализация приложения...');
