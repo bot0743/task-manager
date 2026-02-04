@@ -6,10 +6,6 @@
     <meta name="theme-color" content="#3B82F6">
     <title>Task Manager Pro</title>
     
-    <!-- Firebase SDK (версия 8) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     
@@ -36,30 +32,37 @@
             </div>
             
             <h1 class="login-title">Task Manager Pro</h1>
-            <p class="login-subtitle">Управляйте задачами в команде</p>
+            <p class="login-subtitle">Управляйте задачами оффлайн</p>
             
             <form id="loginForm">
                 <div class="form-group">
-                    <label class="form-label" for="accessKey">Ключ доступа</label>
+                    <label class="form-label" for="accessKey">Имя рабочего пространства</label>
                     <input 
-                        type="password" 
+                        type="text" 
                         id="accessKey" 
                         class="form-input" 
-                        placeholder="Введите секретный ключ" 
+                        placeholder="Введите имя (например: НашПроект)" 
                         required
                         autocomplete="off"
-                        minlength="4"
+                        minlength="3"
                     >
                 </div>
                 
                 <button type="submit" class="btn btn-primary" id="loginBtn">
-                    <span id="loginText">Войти в систему</span>
+                    <span id="loginText">Открыть задачи</span>
                     <div id="loginSpinner" class="spinner" style="display: none;"></div>
                 </button>
             </form>
             
+            <div class="login-actions" style="margin-top: 20px; display: flex; gap: 10px; flex-direction: column;">
+                <button class="btn" style="background: var(--gray-100);" id="importBtn">
+                    <i class="fas fa-file-import"></i> Импорт из файла
+                </button>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
+            </div>
+            
             <div style="margin-top: 20px; text-align: center; font-size: 12px; color: var(--gray-500);">
-                <p>Используйте любой пароль. Задачи будут сохранены.</p>
+                <p>Используйте одно имя на всех устройствах для синхронизации через файл</p>
             </div>
         </div>
     </div>
@@ -77,7 +80,13 @@
             </div>
             
             <div class="header-actions">
-                <button class="icon-btn" id="refreshBtn" title="Обновить">
+                <button class="icon-btn" id="exportBtn" title="Экспорт">
+                    <i class="fas fa-file-export"></i>
+                </button>
+                <button class="icon-btn" id="importBtn2" title="Импорт">
+                    <i class="fas fa-file-import"></i>
+                </button>
+                <button class="icon-btn" id="syncBtn" title="Синхронизировать">
                     <i class="fas fa-sync-alt"></i>
                 </button>
                 <button class="icon-btn" id="logoutBtn" title="Выйти">
@@ -85,6 +94,11 @@
                 </button>
             </div>
         </header>
+        
+        <!-- Sync Status -->
+        <div id="syncStatus" style="display: none; background: var(--primary); color: white; padding: 8px 20px; text-align: center; font-size: 14px;">
+            <i class="fas fa-sync-alt"></i> <span id="syncStatusText">Синхронизация...</span>
+        </div>
         
         <!-- Filters -->
         <div class="filters">
@@ -98,13 +112,15 @@
         
         <!-- Task List -->
         <div class="task-list" id="taskList">
-            <!-- Tasks will be loaded here -->
             <div class="empty-state" id="emptyState">
                 <div class="empty-icon">
                     <i class="fas fa-clipboard-list"></i>
                 </div>
                 <h3>Нет задач</h3>
                 <p>Создайте свою первую задачу</p>
+                <button class="btn btn-primary" id="addFirstTaskBtn" style="margin-top: 20px; width: auto;">
+                    <i class="fas fa-plus"></i> Создать задачу
+                </button>
             </div>
         </div>
         
@@ -181,11 +197,161 @@
                         >
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" id="saveTaskBtn">
-                        <span id="saveTaskText">Сохранить задачу</span>
-                        <div id="saveTaskSpinner" class="spinner" style="display: none;"></div>
-                    </button>
+                    <input type="hidden" id="taskId">
+                    
+                    <div class="form-row" style="margin-top: 30px; justify-content: space-between;">
+                        <button type="submit" class="btn btn-primary" id="saveTaskBtn" style="flex: 1; margin-right: 10px;">
+                            <span id="saveTaskText">Сохранить задачу</span>
+                            <div id="saveTaskSpinner" class="spinner" style="display: none;"></div>
+                        </button>
+                        
+                        <button type="button" class="btn" id="cancelTaskBtn" style="flex: 1; background: var(--gray-100);">
+                            Отмена
+                        </button>
+                    </div>
                 </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import Modal -->
+    <div class="modal" id="importModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Импорт задач</h2>
+                <button class="close-btn" id="closeImportModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Выберите файл для импорта (.json)</label>
+                    <input type="file" id="importFileInput" accept=".json" class="form-input">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Режим импорта</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="importMode" value="replace" checked>
+                            <span>Заменить все задачи (очистить и заменить)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="importMode" value="merge">
+                            <span>Объединить с текущими задачами</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="importMode" value="update">
+                            <span>Обновить существующие и добавить новые</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="importPreview" style="display: none; margin-top: 20px; padding: 15px; background: var(--gray-50); border-radius: 10px;">
+                    <h4 style="margin-bottom: 10px;">Предпросмотр:</h4>
+                    <div id="importPreviewContent"></div>
+                </div>
+                
+                <div class="form-row" style="margin-top: 30px;">
+                    <button type="button" class="btn btn-primary" id="startImportBtn" disabled style="flex: 1;">
+                        Начать импорт
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Экспорт задач</h2>
+                <button class="close-btn" id="closeExportModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Название файла</label>
+                    <input type="text" id="exportFileName" class="form-input" value="tasks_export" placeholder="tasks_export">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Формат данных</label>
+                    <div style="display: flex; gap: 15px;">
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="exportFormat" value="json" checked>
+                            <span>JSON (рекомендуется)</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="exportFormat" value="csv">
+                            <span>CSV (для Excel)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Какие задачи экспортировать</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="exportScope" value="all" checked>
+                            <span>Все задачи</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="exportScope" value="pending">
+                            <span>Только активные</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="radio" name="exportScope" value="completed">
+                            <span>Только завершенные</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-row" style="margin-top: 30px;">
+                    <button type="button" class="btn btn-primary" id="startExportBtn" style="flex: 1;">
+                        <i class="fas fa-download"></i> Скачать файл
+                    </button>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background: var(--gray-50); border-radius: 10px;">
+                    <h4 style="margin-bottom: 10px;"><i class="fas fa-info-circle"></i> Советы по синхронизации:</h4>
+                    <ul style="font-size: 13px; color: var(--gray-600); line-height: 1.5; padding-left: 20px;">
+                        <li>Экспортируйте задачи на одном устройстве</li>
+                        <li>Перешлите файл на другое устройство</li>
+                        <li>Импортируйте файл на втором устройстве</li>
+                        <li>Для командной работы используйте одно имя рабочего пространства</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- QR Code Modal -->
+    <div class="modal" id="qrcodeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Быстрая синхронизация</h2>
+                <button class="close-btn" id="closeQRCodeModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="text-align: center;">
+                <div id="qrcode" style="margin: 20px auto; padding: 20px; background: white; border-radius: 10px; display: inline-block;"></div>
+                <p style="margin-top: 15px; color: var(--gray-600); font-size: 14px;">
+                    Отсканируйте QR-код на другом устройстве для синхронизации
+                </p>
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center;">
+                    <button class="btn" id="copyLinkBtn" style="background: var(--gray-100);">
+                        <i class="fas fa-copy"></i> Копировать ссылку
+                    </button>
+                    <button class="btn btn-primary" id="downloadQRBtn">
+                        <i class="fas fa-download"></i> Скачать QR-код
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -193,16 +359,8 @@
     <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
     
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Загрузка задач...</div>
-    </div>
-    
-    <!-- Firebase Config -->
-    <script src="firebase-config.js"></script>
-    
-    <!-- App Logic -->
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="app.js"></script>
     
     <!-- PWA Service Worker -->
