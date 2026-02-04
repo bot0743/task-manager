@@ -27,6 +27,8 @@
             --danger: #EF4444;
             --warning: #F59E0B;
             --success: #10B981;
+            --overdue: #EF5350;
+            --due-today: #66BB6A;
             --gray-50: #F9FAFB;
             --gray-100: #F3F4F6;
             --gray-200: #E5E7EB;
@@ -322,6 +324,50 @@
             border-left-color: var(--success);
         }
         
+        /* Подсветка по дедлайну */
+        .task-item.overdue {
+            background: linear-gradient(90deg, rgba(255, 235, 238, 0.3) 0%, white 10%);
+            border-left-color: var(--overdue) !important;
+            position: relative;
+        }
+        
+        .task-item.overdue::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--overdue), transparent);
+        }
+        
+        .task-item.due-today {
+            background: linear-gradient(90deg, rgba(232, 245, 233, 0.3) 0%, white 10%);
+            border-left-color: var(--due-today) !important;
+            position: relative;
+        }
+        
+        .task-item.due-today::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--due-today), transparent);
+        }
+        
+        /* Эффект для завершенных задач */
+        .task-item.completed {
+            opacity: 0.7;
+            background: linear-gradient(90deg, rgba(245, 245, 245, 0.5) 0%, white 10%);
+            border-left-color: var(--gray-400) !important;
+        }
+        
+        .task-item.completed .task-title {
+            color: #9E9E9E;
+        }
+        
         .task-header {
             display: flex;
             justify-content: space-between;
@@ -386,6 +432,29 @@
             gap: 5px;
         }
         
+        .deadline-overdue {
+            color: #C62828;
+            font-weight: 600;
+        }
+        
+        .deadline-today {
+            color: #388E3C;
+            font-weight: 600;
+        }
+        
+        .urgent-badge {
+            background: rgba(239, 68, 68, 0.1);
+            color: #C62828;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            margin-left: 8px;
+        }
+        
         .task-actions {
             display: flex;
             gap: 8px;
@@ -417,44 +486,6 @@
         .action-btn.delete {
             background: rgba(239, 68, 68, 0.1);
             color: var(--danger);
-        }
-        
-        .task-item.overdue {
-            background: linear-gradient(90deg, rgba(255, 235, 238, 0.3) 0%, white 10%);
-            border-left: 5px solid #EF5350;
-        }
-
-        .task-item.due-today {
-          background: linear-gradient(90deg, rgba(232, 245, 233, 0.3) 0%, white 10%);
-          border-left: 5px solid #66BB6A;
-        }
-
-        /* Эффект для завершенных задач */
-        .task-item.completed {
-          opacity: 0.7;
-          background: linear-gradient(90deg, rgba(245, 245, 245, 0.5) 0%, white 10%);
-        }
-        
-        .task-item.completed .task-title {
-          color: #9E9E9E;
-        }
-        
-        /* Цвета для срочных задач (красный, но спокойный) */
-        .priority-badge.urgent {
-          background: rgba(239, 83, 80, 0.15);
-          color: #C62828;
-          font-weight: 600;
-        }
-        
-        /* Стили для дедлайна в прошлом */
-        .deadline-overdue {
-          color: #D32F2F;
-          font-weight: 600;
-        }
-        
-        .deadline-today {
-          color: #388E3C;
-          font-weight: 600;
         }
         
         /* Floating Action Button */
@@ -663,6 +694,7 @@
                     <i class="fas fa-tasks"></i>
                 </div>
                 <h1 class="app-title">Task Manager</h1>
+                <span id="currentUserBadge" style="font-size: 12px; color: var(--gray-600);"></span>
             </div>
             
             <div class="header-actions">
@@ -787,10 +819,8 @@
     <script>
         // Конфигурация
         const CONFIG = {
-            ACCESS_KEY: "test132456system",
+            VALID_KEYS: ["test132456system", "team2024", "projectx"],
             FIREBASE_CONFIG: {
-                // Здесь будет ваша конфигурация Firebase
-                // Замените на ваши реальные значения
                 apiKey: "YOUR_API_KEY",
                 authDomain: "your-app.firebaseapp.com",
                 projectId: "your-project-id",
@@ -805,6 +835,7 @@
         let tasks = [];
         let currentFilter = "all";
         let editingTaskId = null;
+        let currentAccessKey = null;
         
         // DOM Elements
         const loginScreen = document.getElementById('loginScreen');
@@ -822,19 +853,28 @@
         const refreshBtn = document.getElementById('refreshBtn');
         const filters = document.querySelectorAll('.filter-btn');
         const toast = document.getElementById('toast');
+        const currentUserBadge = document.getElementById('currentUserBadge');
         
-        // Firebase инициализация (закомментировано до настройки)
-        // let db;
-        // function initFirebase() {
-        //     firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
-        //     db = firebase.firestore();
-        // }
+        // Получение хранилища для текущего ключа
+        function getStorageKey() {
+            if (!currentAccessKey) return null;
+            return `taskManagerDB_${currentAccessKey}`;
+        }
         
         // Имитация базы данных для демо
-        let mockDB = JSON.parse(localStorage.getItem('taskManagerDB') || '{"tasks": []}');
+        function getMockDB() {
+            const storageKey = getStorageKey();
+            if (!storageKey) return { tasks: [] };
+            return JSON.parse(localStorage.getItem(storageKey) || '{"tasks": []}');
+        }
         
         // Временная функция для демо
         async function saveTaskToDB(task) {
+            const storageKey = getStorageKey();
+            if (!storageKey) throw new Error('Не авторизован');
+            
+            let mockDB = getMockDB();
+            
             if (!task.id) {
                 task.id = Date.now().toString();
                 task.createdAt = new Date().toISOString();
@@ -845,16 +885,25 @@
                     mockDB.tasks[index] = task;
                 }
             }
-            localStorage.setItem('taskManagerDB', JSON.stringify(mockDB));
+            
+            localStorage.setItem(storageKey, JSON.stringify(mockDB));
             return task;
         }
         
         async function deleteTaskFromDB(taskId) {
+            const storageKey = getStorageKey();
+            if (!storageKey) throw new Error('Не авторизован');
+            
+            let mockDB = getMockDB();
             mockDB.tasks = mockDB.tasks.filter(task => task.id !== taskId);
-            localStorage.setItem('taskManagerDB', JSON.stringify(mockDB));
+            localStorage.setItem(storageKey, JSON.stringify(mockDB));
         }
         
         async function getTasksFromDB() {
+            const storageKey = getStorageKey();
+            if (!storageKey) return [];
+            
+            const mockDB = getMockDB();
             return mockDB.tasks;
         }
         
@@ -867,23 +916,24 @@
             const loginText = document.getElementById('loginText');
             const loginSpinner = document.getElementById('loginSpinner');
             
-            if (accessKey === CONFIG.ACCESS_KEY) {
+            if (CONFIG.VALID_KEYS.includes(accessKey)) {
                 // Показываем индикатор загрузки
                 loginText.style.display = 'none';
                 loginSpinner.style.display = 'inline-block';
                 
                 // Имитация загрузки
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 800));
                 
-                // Сохраняем ключ в sessionStorage
+                // Сохраняем ключ
+                currentAccessKey = accessKey;
                 sessionStorage.setItem('taskManagerAuth', accessKey);
+                
+                // Обновляем бейдж пользователя
+                currentUserBadge.textContent = `(${accessKey.substring(0, 6)}...)`;
                 
                 // Переходим в приложение
                 loginScreen.style.display = 'none';
                 appScreen.style.display = 'flex';
-                
-                // Инициализируем Firebase (раскомментировать после настройки)
-                // initFirebase();
                 
                 // Загружаем задачи
                 await loadTasks();
@@ -892,7 +942,7 @@
                 loginText.style.display = 'inline';
                 loginSpinner.style.display = 'none';
                 
-                showToast('Добро пожаловать!', 'success');
+                showToast(`Добро пожаловать! Ключ: ${accessKey.substring(0, 6)}...`, 'success');
             } else {
                 showToast('Неверный ключ доступа', 'error');
                 accessKeyInput.focus();
@@ -903,10 +953,11 @@
         window.addEventListener('load', () => {
             const savedAuth = sessionStorage.getItem('taskManagerAuth');
             
-            if (savedAuth === CONFIG.ACCESS_KEY) {
+            if (savedAuth && CONFIG.VALID_KEYS.includes(savedAuth)) {
+                currentAccessKey = savedAuth;
+                currentUserBadge.textContent = `(${savedAuth.substring(0, 6)}...)`;
                 loginScreen.style.display = 'none';
                 appScreen.style.display = 'flex';
-                // initFirebase();
                 loadTasks();
             } else {
                 loginScreen.style.display = 'flex';
@@ -916,6 +967,7 @@
         
         // Выход из системы
         logoutBtn.addEventListener('click', () => {
+            currentAccessKey = null;
             sessionStorage.removeItem('taskManagerAuth');
             loginScreen.style.display = 'flex';
             appScreen.style.display = 'none';
@@ -989,15 +1041,7 @@
             }
             
             try {
-                // Сохранение в Firebase (закомментировано)
-                // if (editingTaskId) {
-                //     await db.collection(CONFIG.COLLECTION_NAME).doc(editingTaskId).update(taskData);
-                // } else {
-                //     taskData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                //     await db.collection(CONFIG.COLLECTION_NAME).add(taskData);
-                // }
-                
-                // Демо версия
+                // Сохранение задачи
                 await saveTaskToDB(taskData);
                 
                 // Закрываем модальное окно
@@ -1020,18 +1064,6 @@
         // Загрузка задач
         async function loadTasks() {
             try {
-                // Загрузка из Firebase (закомментировано)
-                // const snapshot = await db.collection(CONFIG.COLLECTION_NAME)
-                //     .orderBy('priority', 'desc')
-                //     .orderBy('deadline')
-                //     .get();
-                
-                // tasks = snapshot.docs.map(doc => ({
-                //     id: doc.id,
-                //     ...doc.data()
-                // }));
-                
-                // Демо версия
                 tasks = await getTasksFromDB();
                 
                 // Сортируем задачи
@@ -1091,8 +1123,9 @@
             taskList.innerHTML = '';
             
             if (filteredTasks.length === 0) {
-                taskList.appendChild(emptyState.cloneNode(true));
-                emptyState.style.display = 'flex';
+                const emptyStateClone = emptyState.cloneNode(true);
+                emptyStateClone.style.display = 'flex';
+                taskList.appendChild(emptyStateClone);
                 return;
             }
             
@@ -1106,16 +1139,49 @@
         // Создание элемента задачи
         function createTaskElement(task) {
             const div = document.createElement('div');
-            div.className = `task-item ${task.priority} ${task.completed ? 'completed' : ''}`;
+            div.className = `task-item ${task.priority}`;
+            
+            // Проверяем статус выполнения
+            if (task.completed) {
+                div.classList.add('completed');
+            }
+            
+            // Определяем статус дедлайна
+            const now = new Date();
+            const deadlineDate = new Date(task.deadline);
+            const isOverdue = !task.completed && deadlineDate < now;
+            const isDueToday = !task.completed && 
+                deadlineDate.toDateString() === now.toDateString();
+            
+            // Проверяем срочность (менее 24 часов)
+            const hoursLeft = Math.floor((deadlineDate - now) / (1000 * 60 * 60));
+            const isUrgent = !task.completed && hoursLeft >= 0 && hoursLeft < 24;
+            
+            if (isOverdue) {
+                div.classList.add('overdue');
+            } else if (isDueToday) {
+                div.classList.add('due-today');
+            }
             
             // Форматирование даты
-            const deadlineDate = new Date(task.deadline);
             const formattedDate = deadlineDate.toLocaleDateString('ru-RU', {
                 day: 'numeric',
                 month: 'short',
                 hour: '2-digit',
                 minute: '2-digit'
             });
+            
+            // Определяем класс для срока
+            let deadlineClass = '';
+            let deadlineIcon = 'far fa-clock';
+            
+            if (isOverdue) {
+                deadlineClass = 'deadline-overdue';
+                deadlineIcon = 'fas fa-exclamation-triangle';
+            } else if (isDueToday) {
+                deadlineClass = 'deadline-today';
+                deadlineIcon = 'fas fa-bell';
+            }
             
             // Теги
             const tagsHtml = task.tags && task.tags.length > 0 
@@ -1128,10 +1194,22 @@
                    </div>`
                 : '';
             
+            // Бейдж срочности
+            const urgentBadge = isUrgent 
+                ? `<span class="urgent-badge">
+                    <i class="fas fa-hourglass-end"></i> ${hoursLeft}ч
+                   </span>`
+                : '';
+            
             div.innerHTML = `
                 <div class="task-header">
-                    <div class="task-title ${task.completed ? 'completed' : ''}">${task.title}</div>
-                    <div class="task-priority ${task.priority}">${getPriorityText(task.priority)}</div>
+                    <div class="task-title ${task.completed ? 'completed' : ''}">
+                        ${task.title}
+                        ${urgentBadge}
+                    </div>
+                    <div class="task-priority ${task.priority}">
+                        ${getPriorityText(task.priority)}
+                    </div>
                 </div>
                 
                 ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
@@ -1139,9 +1217,10 @@
                 ${tagsHtml}
                 
                 <div class="task-footer">
-                    <div class="task-deadline">
-                        <i class="far fa-clock" style="font-size: 12px;"></i>
+                    <div class="task-deadline ${deadlineClass}">
+                        <i class="${deadlineIcon}" style="font-size: 12px;"></i>
                         <span>${formattedDate}</span>
+                        ${isOverdue ? '<span style="margin-left: 5px; font-size: 11px; color: #C62828;">(Просрочено)</span>' : ''}
                     </div>
                     
                     <div class="task-actions">
@@ -1178,15 +1257,7 @@
             task.completed = !task.completed;
             
             try {
-                // Обновление в Firebase (закомментировано)
-                // await db.collection(CONFIG.COLLECTION_NAME).doc(taskId).update({
-                //     completed: task.completed
-                // });
-                
-                // Демо версия
                 await saveTaskToDB(task);
-                
-                // Обновляем список
                 sortTasks();
                 renderTasks();
                 
@@ -1227,10 +1298,6 @@
             if (!confirm('Удалить эту задачу?')) return;
             
             try {
-                // Удаление из Firebase (закомментировано)
-                // await db.collection(CONFIG.COLLECTION_NAME).doc(taskId).delete();
-                
-                // Демо версия
                 await deleteTaskFromDB(taskId);
                 
                 // Удаляем из массива
