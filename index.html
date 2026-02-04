@@ -125,7 +125,13 @@
             </div>
         </div>
         
-       <!-- Stats Bar -->
+        
+        <!-- Floating Action Button -->
+        <button class="fab" id="addTaskBtn">
+            <i class="fas fa-plus"></i>
+        </button>
+
+        <!-- Stats Bar -->
         <div id="statsBar" style="display: none; position: fixed; bottom: 100px; left: 0; right: 0; background: white; padding: 12px 20px; border-top: 1px solid var(--gray-200); font-size: 13px; color: var(--gray-600); z-index: 50;">
             <div style="display: flex; justify-content: space-around; gap: 15px;">
                 <span>Всего: <strong id="totalTasks">0</strong></span>
@@ -134,11 +140,6 @@
                 <span>Просрочено: <strong id="overdueTasks">0</strong></span>
             </div>
         </div>
-        
-        <!-- Floating Action Button -->
-        <button class="fab" id="addTaskBtn">
-            <i class="fas fa-plus"></i>
-        </button>
     </div>
     
     <!-- Add/Edit Task Modal -->
