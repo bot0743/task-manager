@@ -268,8 +268,8 @@ loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const password = accessKeyInput.value.trim();
-    if (password.length < 4) {
-        showToast('Пароль должен быть не менее 4 символов', 'error');
+    if (password.length < 6) {
+        showToast('Пароль должен быть не менее 6 символов', 'error');
         return;
     }
     
