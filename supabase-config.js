@@ -24,51 +24,98 @@
 
     // Аутентификация по паролю
     async function loginWithPassword(password) {
-        try {
-            console.log('Попытка входа с паролем:', password);
+    try {
+        console.log('Попытка входа с паролем:', password);
+        
+        // Генерируем валидный email
+        // Используем хэш пароля как часть email для уникальности
+        const emailHash = btoa(password).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+        const email = `user_${emailHash}@taskmanager.app`;  // Используем .app домен
+        
+        console.log('Сгенерированный email:', email);
+        
+        // Пытаемся войти
+        const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (loginError) {
+            console.log('Пользователь не найден, создаем нового...');
             
-            // Создаем email из пароля
-            const email = `${password}@taskmanager.local`;
-            
-            // Пытаемся войти
-            const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+            // Регистрируем нового пользователя
+            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
                 email: email,
-                password: password
+                password: password,
+                options: {
+                    data: {
+                        display_name: `User_${password.substring(0, 10)}`
+                    },
+                    emailRedirectTo: window.location.origin
+                }
             });
 
-            if (loginError) {
-                console.log('Пользователь не найден, создаем нового...');
+            if (signUpError) {
+                console.error('Ошибка регистрации:', signUpError);
                 
-                // Регистрируем нового пользователя
-                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            display_name: `User_${password}`
-                        }
+                // Проверяем, если это ошибка подтверждения email
+                if (signUpError.message.includes('signup requires email confirmation')) {
+                    console.log('Требуется подтверждение email. Пробуем войти...');
+                    // Пробуем войти снова после "регистрации"
+                    const { data: retryLogin, error: retryError } = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+                    
+                    if (retryError) {
+                        return { success: false, error: retryError.message };
                     }
-                });
-
-                if (signUpError) {
-                    console.error('Ошибка регистрации:', signUpError);
-                    return { success: false, error: signUpError.message };
+                    
+                    currentUser = retryLogin.user;
+                    return { success: true, user: retryLogin.user };
                 }
                 
-                console.log('Новый пользователь создан:', signUpData);
-                currentUser = signUpData.user;
-                return { success: true, user: signUpData.user };
+                return { success: false, error: signUpError.message };
             }
             
-            console.log('Вход успешен:', loginData.user.email);
-            currentUser = loginData.user;
-            return { success: true, user: loginData.user };
+            console.log('Новый пользователь создан:', signUpData);
             
-        } catch (error) {
-            console.error('Ошибка входа:', error);
-            return { success: false, error: error.message };
+            // Если пользователь создан, но требуется подтверждение
+            if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
+                console.log('Требуется подтверждение email. Пробуем войти...');
+                
+                // Ждем немного и пробуем войти
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const { data: loginAfterSignup, error: loginAfterSignupError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (loginAfterSignupError) {
+                    return { 
+                        success: false, 
+                        error: 'Требуется подтверждение email. Проверьте почту или попробуйте другой пароль.' 
+                    };
+                }
+                
+                currentUser = loginAfterSignup.user;
+                return { success: true, user: loginAfterSignup.user };
+            }
+            
+            currentUser = signUpData.user;
+            return { success: true, user: signUpData.user };
         }
+        
+        console.log('Вход успешен:', loginData.user.email);
+        currentUser = loginData.user;
+        return { success: true, user: loginData.user };
+        
+    } catch (error) {
+        console.error('Ошибка входа:', error);
+        return { success: false, error: error.message };
     }
+}
 
     // Выход из системы
     async function logout() {
