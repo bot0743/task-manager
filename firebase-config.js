@@ -1,4 +1,4 @@
-// Конфигурация Firebase
+// Ваша конфигурация Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAVlZwbARYWzPWmSjnc24t0FOSlKP4UmOg",
   authDomain: "task-manager-c0fa9.firebaseapp.com",
@@ -8,9 +8,14 @@ const firebaseConfig = {
   appId: "1:288647961766:web:357c40995536c6bbbb6867"
 };
 
-// Инициализация Firebase
-firebase.initializeApp(firebaseConfig);
+// Инициализация Firebase (версия 8 CDN)
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+// Получаем ссылку на Firestore
 const db = firebase.firestore();
 
-// Секретный ключ для проверки паролей (шифруется перед сохранением)
-const SECRET_KEY = "task-manager-secure-key-sdfbstbtebsb-2026";
+// Глобальная переменная для доступа к Firebase
+window.firebaseApp = firebase;
+window.firebaseDB = db;
