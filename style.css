@@ -672,14 +672,14 @@ body {
     }
     
     .stats-bar {
-        padding: 10px 15px;
+        padding: 10px 10px;
         font-size: 11px;
     }
     
     .stats-content {
         display: flex;
         justify-content: space-between;
-        gap: 5px;
+        gap: 3px;
         flex-wrap: nowrap;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -689,7 +689,7 @@ body {
         text-align: center;
         flex: 1;
         min-width: 0;
-        padding: 0 3px;
+        padding: 0 2px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
