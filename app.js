@@ -24,6 +24,9 @@ const toast = document.getElementById('toast');
 const currentUserBadge = document.getElementById('currentUserBadge');
 const loadingOverlay = document.getElementById('loadingOverlay');
 
+// Получаем ссылку на базу данных
+const db = window.firebaseDB || firebase.firestore();
+
 // Простая хэш-функция для пароля
 function hashPassword(password) {
     let hash = 0;
@@ -32,36 +35,36 @@ function hashPassword(password) {
         hash = ((hash << 5) - hash) + char;
         hash = hash & hash;
     }
-    return hash.toString(36);
+    return 'user_' + Math.abs(hash).toString(36);
 }
 
 // Проверка пароля через Firebase
 async function validatePassword(password) {
     try {
-        const passwordHash = hashPassword(password);
+        const userId = hashPassword(password);
         
         // Проверяем, есть ли такой пользователь в Firebase
-        const userDoc = await db.collection('users').doc(passwordHash).get();
+        const userDoc = await db.collection('users').doc(userId).get();
         
         if (userDoc.exists) {
             return {
                 success: true,
-                userId: passwordHash,
-                username: userDoc.data().username || `Пользователь ${passwordHash.substring(0, 6)}`
+                userId: userId,
+                username: userDoc.data().username || `Пользователь ${userId.substring(5, 11)}`
             };
         }
         
         // Если пользователь не существует, создаем нового
-        await db.collection('users').doc(passwordHash).set({
-            username: `Пользователь ${passwordHash.substring(0, 6)}`,
+        await db.collection('users').doc(userId).set({
+            username: `Пользователь ${userId.substring(5, 11)}`,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             lastLogin: firebase.firestore.FieldValue.serverTimestamp()
         });
         
         return {
             success: true,
-            userId: passwordHash,
-            username: `Пользователь ${passwordHash.substring(0, 6)}`
+            userId: userId,
+            username: `Пользователь ${userId.substring(5, 11)}`
         };
     } catch (error) {
         console.error('Ошибка проверки пароля:', error);
@@ -191,14 +194,19 @@ addTaskBtn.addEventListener('click', () => {
     modalTitle.textContent = 'Новая задача';
     taskForm.reset();
     
-    // Устанавливаем дедлайн на завтра
+    // Устанавливаем дедлайн на завтра в 12:00
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(12, 0, 0, 0);
     
-    const formattedDate = tomorrow.toISOString().slice(0, 16);
-    document.getElementById('taskDeadline').value = formattedDate;
+    // Форматируем для input datetime-local
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    const hours = String(tomorrow.getHours()).padStart(2, '0');
+    const minutes = String(tomorrow.getMinutes()).padStart(2, '0');
     
+    document.getElementById('taskDeadline').value = `${year}-${month}-${day}T${hours}:${minutes}`;
     taskModal.classList.add('active');
 });
 
@@ -297,10 +305,10 @@ async function loadTasks() {
                     };
                     // Конвертируем timestamp Firestore в Date
                     if (task.createdAt && task.createdAt.toDate) {
-                        task.createdAt = task.createdAt.toDate().toISOString();
+                        task.createdAt = task.createdAt.toDate();
                     }
                     if (task.updatedAt && task.updatedAt.toDate) {
-                        task.updatedAt = task.updatedAt.toDate().toISOString();
+                        task.updatedAt = task.updatedAt.toDate();
                     }
                     tasks.push(task);
                 });
@@ -535,8 +543,13 @@ function editTask(taskId) {
     
     // Форматируем дату для input[type="datetime-local"]
     const deadlineDate = new Date(task.deadline);
-    const formattedDate = deadlineDate.toISOString().slice(0, 16);
-    document.getElementById('taskDeadline').value = formattedDate;
+    const year = deadlineDate.getFullYear();
+    const month = String(deadlineDate.getMonth() + 1).padStart(2, '0');
+    const day = String(deadlineDate.getDate()).padStart(2, '0');
+    const hours = String(deadlineDate.getHours()).padStart(2, '0');
+    const minutes = String(deadlineDate.getMinutes()).padStart(2, '0');
+    
+    document.getElementById('taskDeadline').value = `${year}-${month}-${day}T${hours}:${minutes}`;
     
     document.getElementById('taskTags').value = task.tags ? task.tags.join(', ') : '';
     
@@ -585,13 +598,4 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
-}
-
-// Регистрация Service Worker для PWA
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => {
-            console.log('Service Worker registration failed:', err);
-        });
-    });
 }
