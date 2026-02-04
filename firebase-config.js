@@ -1,4 +1,4 @@
-// Ваша конфигурация Firebase
+// Конфигурация Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAVlZwbARYWzPWmSjnc24t0FOSlKP4UmOg",
   authDomain: "task-manager-c0fa9.firebaseapp.com",
@@ -8,14 +8,19 @@ const firebaseConfig = {
   appId: "1:288647961766:web:357c40995536c6bbbb6867"
 };
 
-// Инициализация Firebase (версия 8 CDN)
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+// Инициализация Firebase
+firebase.initializeApp(firebaseConfig);
 
-// Получаем ссылку на Firestore
+// Получаем ссылку на базу данных
 const db = firebase.firestore();
 
-// Глобальная переменная для доступа к Firebase
-window.firebaseApp = firebase;
+// Включаем режим отладки (только для разработки)
+db.settings({
+  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+});
+
+// Для отладки в консоли
+console.log("Firebase инициализирован");
+
+// Глобальные переменные для доступа
 window.firebaseDB = db;
