@@ -419,6 +419,44 @@
             color: var(--danger);
         }
         
+        .task-item.overdue {
+            background: linear-gradient(90deg, rgba(255, 235, 238, 0.3) 0%, white 10%);
+            border-left: 5px solid #EF5350;
+        }
+
+        .task-item.due-today {
+          background: linear-gradient(90deg, rgba(232, 245, 233, 0.3) 0%, white 10%);
+          border-left: 5px solid #66BB6A;
+        }
+
+        /* Эффект для завершенных задач */
+        .task-item.completed {
+          opacity: 0.7;
+          background: linear-gradient(90deg, rgba(245, 245, 245, 0.5) 0%, white 10%);
+        }
+        
+        .task-item.completed .task-title {
+          color: #9E9E9E;
+        }
+        
+        /* Цвета для срочных задач (красный, но спокойный) */
+        .priority-badge.urgent {
+          background: rgba(239, 83, 80, 0.15);
+          color: #C62828;
+          font-weight: 600;
+        }
+        
+        /* Стили для дедлайна в прошлом */
+        .deadline-overdue {
+          color: #D32F2F;
+          font-weight: 600;
+        }
+        
+        .deadline-today {
+          color: #388E3C;
+          font-weight: 600;
+        }
+        
         /* Floating Action Button */
         .fab {
             position: fixed;
