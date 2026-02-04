@@ -1,8 +1,9 @@
 {
   "name": "Task Manager Pro",
-  "short_name": "Task Manager",
-  "description": "Менеджер задач с защищенным доступом",
+  "short_name": "Tasks",
+  "description": "Менеджер задач с оффлайн синхронизацией",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#3B82F6",
   "theme_color": "#3B82F6",
