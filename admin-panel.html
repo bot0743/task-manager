@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель Task Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            margin-bottom: 30px;
+            color: #3B82F6;
+            text-align: center;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        
+        h2 {
+            margin-bottom: 20px;
+            color: #4B5563;
+            font-size: 1.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4B5563;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+        
+        button {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2563EB;
+        }
+        
+        .btn-danger {
+            background: #EF4444;
+        }
+        
+        .btn-danger:hover {
+            background: #DC2626;
+        }
+        
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .success {
+            background: #D1FAE5;
+            color: #065F46;
+            border: 1px solid #A7F3D0;
+            display: block;
+        }
+        
+        .error {
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FECACA;
+            display: block;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        
+        .data-table th {
+            background: #F9FAFB;
+            font-weight: 600;
+            color: #4B5563;
+        }
+        
+        .data-table tr:hover {
+            background: #F9FAFB;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-row > div {
+            flex: 1;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #E5E7EB;
+            padding-bottom: 10px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: #F3F4F6;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            background: #3B82F6;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Админ-панель Task Manager</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('workspace')">Пространства</button>
+            <button class="tab" onclick="showTab('users')">Пользователи</button>
+            <button class="tab" onclick="showTab('tasks')">Задачи</button>
+        </div>
+        
+        <div id="tab-workspace" class="tab-content active">
+            <div class="section">
+                <h2>Создать новое пространство</h2>
+                <form id="createWorkspaceForm">
+                    <div class="form-group">
+                        <label for="workspaceName">Название пространства</label>
+                        <input type="text" id="workspaceName" placeholder="Введите название" required>
+                    </div>
+                    <button type="submit">Создать пространство</button>
+                </form>
+                <div id="workspaceMessage" class="message"></div>
+            </div>
+            
+            <div class="section">
+                <h2>Список пространств</h2>
+                <table class="data-table" id="workspacesTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Дата создания</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workspacesList">
+                        <!-- Данные будут загружены через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="tab-users" class="tab-content">
+            <div class="section">
+                <h2>Создать нового пользователя</h2>
+                <form id="createUserForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="newUsername">Логин</label>
+                            <input type="text" id="newUsername" placeholder="Введите логин" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">Пароль</label>
+                            <input type="password" id="newPassword" placeholder="Введите пароль" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="userWorkspace">Пространство</label>
+                        <select id="userWorkspace" required>
+                            <option value="">Выберите пространство</option>
+                        </select>
+                    </div>
+                    <button type="submit">Создать пользователя</button>
+                </form>
+                <div id="userMessage" class="message"></div>
+            </div>
+            
+            <div class="section">
+                <h2>Список пользователей</h2>
+                <table class="data-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Логин</th>
+                            <th>Пространство</th>
+                            <th>Дата создания</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <!-- Данные будут загружены через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="tab-tasks" class="tab-content">
+            <div class="section">
+                <h2>Список всех задач</h2>
+                <table class="data-table" id="tasksTable">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Приоритет</th>
+                            <th>Дедлайн</th>
+                            <th>Статус</th>
+                            <th>Пространство</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksList">
+                        <!-- Данные будут загружены через JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Конфигурация Supabase (замените на ваш service_role ключ)
+        const SUPABASE_URL = 'https://qaaxrfrfybysixsmbagt.supabase.co';
+        const SUPABASE_SERVICE_KEY = 'ваш_service_role_ключ_здесь'; // ВАЖНО: Получите из Supabase → Settings → API
+        
+        let supabase;
+        let workspaces = [];
+        let users = [];
+        
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            initSupabase();
+            loadWorkspaces();
+        });
+        
+        // Инициализация Supabase
+        function initSupabase() {
+            if (typeof window.supabase === 'undefined') {
+                alert('Библиотека Supabase не загружена. Проверьте подключение к интернету.');
+                return;
+            }
+            
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+            console.log('Supabase инициализирован');
+        }
+        
+        // Функция хэширования пароля
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        // Загрузка пространств
+        async function loadWorkspaces() {
+            try {
+                const { data, error } = await supabase
+                    .from('workspace')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                workspaces = data;
+                displayWorkspaces();
+                updateWorkspaceSelect();
+            } catch (error) {
+                console.error('Ошибка загрузки пространств:', error);
+                showMessage('workspaceMessage', 'Ошибка загрузки пространств: ' + error.message, 'error');
+            }
+        }
+        
+        // Отображение пространств
+        function displayWorkspaces() {
+            const tbody = document.getElementById('workspacesList');
+            tbody.innerHTML = '';
+            
+            workspaces.forEach(workspace => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><small>${workspace.id.substring(0, 8)}...</small></td>
+                    <td>${workspace.name}</td>
+                    <td>${new Date(workspace.created_at).toLocaleString()}</td>
+                    <td>
+                        <button onclick="deleteWorkspace('${workspace.id}')" class="btn-danger" style="padding: 5px 10px; font-size: 14px;">
+                            Удалить
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Обновление выпадающего списка пространств
+        function updateWorkspaceSelect() {
+            const select = document.getElementById('userWorkspace');
+            select.innerHTML = '<option value="">Выберите пространство</option>';
+            
+            workspaces.forEach(workspace => {
+                const option = document.createElement('option');
+                option.value = workspace.id;
+                option.textContent = workspace.name;
+                select.appendChild(option);
+            });
+        }
+        
+        // Создание пространства
+        document.getElementById('createWorkspaceForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('workspaceName').value.trim();
+            if (!name) {
+                showMessage('workspaceMessage', 'Введите название пространства', 'error');
+                return;
+            }
+            
+            try {
+                const { data, error } = await supabase
+                    .from('workspace')
+                    .insert([{ name: name }])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                showMessage('workspaceMessage', `Пространство "${name}" создано успешно!`, 'success');
+                document.getElementById('workspaceName').value = '';
+                loadWorkspaces();
+                
+            } catch (error) {
+                console.error('Ошибка создания пространства:', error);
+                showMessage('workspaceMessage', 'Ошибка создания пространства: ' + error.message, 'error');
+            }
+        });
+        
+        // Создание пользователя
+        document.getElementById('createUserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const workspaceId = document.getElementById('userWorkspace').value;
+            
+            if (!username || !password || !workspaceId) {
+                showMessage('userMessage', 'Заполните все поля', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showMessage('userMessage', 'Пароль должен быть не менее 6 символов', 'error');
+                return;
+            }
+            
+            try {
+                const passwordHash = await hashPassword(password);
+                
+                const { data, error } = await supabase
+                    .from('app_users')
+                    .insert([{
+                        username: username,
+                        password_hash: passwordHash,
+                        workspace_id: workspaceId
+                    }])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                showMessage('userMessage', `Пользователь "${username}" создан успешно!`, 'success');
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                loadUsers();
+                
+            } catch (error) {
+                console.error('Ошибка создания пользователя:', error);
+                if (error.code === '23505') {
+                    showMessage('userMessage', 'Пользователь с таким логином уже существует в этом пространстве', 'error');
+                } else {
+                    showMessage('userMessage', 'Ошибка создания пользователя: ' + error.message, 'error');
+                }
+            }
+        });
+        
+        // Удаление пространства
+        async function deleteWorkspace(workspaceId) {
+            if (!confirm('ВНИМАНИЕ! Удаление пространства удалит всех пользователей и задачи в нем. Продолжить?')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('workspace')
+                    .delete()
+                    .eq('id', workspaceId);
+                
+                if (error) throw error;
+                
+                showMessage('workspaceMessage', 'Пространство удалено успешно', 'success');
+                loadWorkspaces();
+                loadUsers();
+                
+            } catch (error) {
+                console.error('Ошибка удаления пространства:', error);
+                showMessage('workspaceMessage', 'Ошибка удаления пространства: ' + error.message, 'error');
+            }
+        }
+        
+        // Загрузка пользователей
+        async function loadUsers() {
+            try {
+                const { data, error } = await supabase
+                    .from('app_users')
+                    .select(`
+                        *,
+                        workspace:workspace_id(name)
+                    `)
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                users = data;
+                displayUsers();
+            } catch (error) {
+                console.error('Ошибка загрузки пользователей:', error);
+            }
+        }
+        
+        // Отображение пользователей
+        function displayUsers() {
+            const tbody = document.getElementById('usersList');
+            tbody.innerHTML = '';
+            
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.username}</td>
+                    <td>${user.workspace ? user.workspace.name : 'Неизвестно'}</td>
+                    <td>${new Date(user.created_at).toLocaleString()}</td>
+                    <td>
+                        <button onclick="deleteUser('${user.id}')" class="btn-danger" style="padding: 5px 10px; font-size: 14px;">
+                            Удалить
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Удаление пользователя
+        async function deleteUser(userId) {
+            if (!confirm('Удалить этого пользователя?')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('app_users')
+                    .delete()
+                    .eq('id', userId);
+                
+                if (error) throw error;
+                
+                showMessage('userMessage', 'Пользователь удален успешно', 'success');
+                loadUsers();
+                
+            } catch (error) {
+                console.error('Ошибка удаления пользователя:', error);
+                showMessage('userMessage', 'Ошибка удаления пользователя: ' + error.message, 'error');
+            }
+        }
+        
+        // Показать вкладку
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            if (tabName === 'users') {
+                loadUsers();
+            } else if (tabName === 'tasks') {
+                loadTasks();
+            }
+        }
+        
+        // Загрузка задач
+        async function loadTasks() {
+            try {
+                const { data, error } = await supabase
+                    .from('tasks')
+                    .select(`
+                        *,
+                        workspace:workspace_id(name)
+                    `)
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                displayTasks(data);
+            } catch (error) {
+                console.error('Ошибка загрузки задач:', error);
+            }
+        }
+        
+        // Отображение задач
+        function displayTasks(tasks) {
+            const tbody = document.getElementById('tasksList');
+            tbody.innerHTML = '';
+            
+            tasks.forEach(task => {
+                const row = document.createElement('tr');
+                const deadline = new Date(task.deadline);
+                const now = new Date();
+                const isOverdue = !task.completed && deadline < now;
+                
+                row.innerHTML = `
+                    <td>${task.title}</td>
+                    <td>
+                        <span style="
+                            padding: 2px 8px;
+                            border-radius: 12px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            background: ${task.priority === 'high' ? '#FEE2E2' : task.priority === 'medium' ? '#FEF3C7' : '#D1FAE5'};
+                            color: ${task.priority === 'high' ? '#991B1B' : task.priority === 'medium' ? '#92400E' : '#065F46'};
+                        ">
+                            ${task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
+                        </span>
+                    </td>
+                    <td>
+                        ${deadline.toLocaleString()}
+                        ${isOverdue ? '<br><small style="color: #DC2626;">Просрочено</small>' : ''}
+                    </td>
+                    <td>
+                        <span style="
+                            padding: 2px 8px;
+                            border-radius: 12px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            background: ${task.completed ? '#D1FAE5' : '#DBEAFE'};
+                            color: ${task.completed ? '#065F46' : '#1E40AF'};
+                        ">
+                            ${task.completed ? 'Завершено' : 'Активно'}
+                        </span>
+                    </td>
+                    <td>${task.workspace ? task.workspace.name : 'Неизвестно'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Показать сообщение
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `message ${type}`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+    
+    <!-- Подключение Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</body>
+</html>
