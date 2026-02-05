@@ -3,13 +3,15 @@ let tasks = [];
 let currentFilter = "all";
 let editingTaskId = null;
 let currentUser = null;
+let currentWorkspace = null;
 let tasksSubscription = null;
 
 // DOM Elements
 const loginScreen = document.getElementById('loginScreen');
 const appScreen = document.getElementById('appScreen');
 const loginForm = document.getElementById('loginForm');
-const accessKeyInput = document.getElementById('accessKey');
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
 const taskList = document.getElementById('taskList');
 const emptyState = document.getElementById('emptyState');
 const taskModal = document.getElementById('taskModal');
@@ -51,7 +53,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (sessionResult.success) {
                 currentUser = sessionResult.user;
-                currentUserBadge.textContent = `ID: ${currentUser.id.substring(0, 8)}`;
+                currentWorkspace = sessionResult.workspace;
+                currentUserBadge.textContent = `${currentUser.username} | ${currentWorkspace.name}`;
                 loginScreen.style.display = 'none';
                 appScreen.style.display = 'flex';
                 await loadTasks();
@@ -75,7 +78,8 @@ async function init() {
         const sessionResult = await window.supabaseAuth.checkSession();
         if (sessionResult.success) {
             currentUser = sessionResult.user;
-            currentUserBadge.textContent = `ID: ${currentUser.id.substring(0, 8)}`;
+            currentWorkspace = sessionResult.workspace;
+            currentUserBadge.textContent = `${currentUser.username} | ${currentWorkspace.name}`;
             loginScreen.style.display = 'none';
             appScreen.style.display = 'flex';
             await loadTasks();
@@ -92,6 +96,8 @@ async function loadTasks() {
     try {
         showSyncStatus('Загрузка задач...');
         const tasksData = await window.supabaseAuth.getTasks();
+        
+        // Преобразуем строковые даты в объекты Date
         tasks = tasksData.map(task => ({
             ...task,
             deadline: new Date(task.deadline),
@@ -199,9 +205,17 @@ function createTaskElement(task) {
         deadlineIcon = 'fas fa-bell';
     }
     
-    const tagsHtml = task.tags && task.tags.length > 0 
+    // Обработка тегов (может быть массивом или строкой)
+    let tagsArray = [];
+    if (Array.isArray(task.tags)) {
+        tagsArray = task.tags;
+    } else if (typeof task.tags === 'string' && task.tags.trim() !== '') {
+        tagsArray = task.tags.split(',').map(tag => tag.trim());
+    }
+    
+    const tagsHtml = tagsArray.length > 0 
         ? `<div style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
-            ${task.tags.map(tag => 
+            ${tagsArray.map(tag => 
                 `<span style="background: var(--gray-100); padding: 2px 8px; border-radius: 10px; font-size: 11px; color: var(--gray-600);">
                     ${tag}
                 </span>`
@@ -269,11 +283,11 @@ function createTaskElement(task) {
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const workspaceId = document.getElementById('workspaceId').value.trim();
-    const password = document.getElementById('accessKey').value.trim();
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
     
-    if (workspaceId.length === 0) {
-        showToast('Введите ID пространства', 'error');
+    if (username.length < 3) {
+        showToast('Логин должен быть не менее 3 символов', 'error');
         return;
     }
     
@@ -290,11 +304,17 @@ loginForm.addEventListener('submit', async (e) => {
     loginSpinner.style.display = 'inline-block';
     
     try {
-        const result = await window.supabaseAuth.loginWithPassword(workspaceId, password);
+        const result = await window.supabaseAuth.login(username, password);
         
         if (result.success) {
             currentUser = result.user;
-            currentUserBadge.textContent = `Пространство: ${result.workspace}`;
+            currentWorkspace = result.workspace;
+            
+            // Сохраняем сессию
+            window.supabaseAuth.saveSession(currentUser, currentWorkspace);
+            
+            // Обновляем интерфейс
+            currentUserBadge.textContent = `${currentUser.username} | ${currentWorkspace.name}`;
             loginScreen.style.display = 'none';
             appScreen.style.display = 'flex';
             
@@ -302,7 +322,7 @@ loginForm.addEventListener('submit', async (e) => {
             startRealtimeSubscription();
             updateSyncStatus(true);
             
-            showToast(`Вход выполнен в пространство: ${result.workspace}`, 'success');
+            showToast('Вход выполнен! Задачи синхронизируются в реальном времени', 'success');
         } else {
             showToast(`Ошибка: ${result.error}`, 'error');
         }
@@ -325,30 +345,31 @@ logoutBtn.addEventListener('click', async () => {
     
     loginScreen.style.display = 'flex';
     appScreen.style.display = 'none';
-    document.getElementById('workspaceId').value = '';
-    document.getElementById('accessKey').value = '';
+    usernameInput.value = '';
+    passwordInput.value = '';
     tasks = [];
     currentUser = null;
+    currentWorkspace = null;
     updateSyncStatus(false);
     showToast('Вы вышли из системы', 'info');
 });
 
 // Real-time подписка
 function startRealtimeSubscription() {
-    if (!currentUser) return;
+    if (!currentWorkspace) return;
     
     if (tasksSubscription) {
         tasksSubscription.unsubscribe();
     }
     
     tasksSubscription = window.supabaseAuth.supabase
-        .channel('tasks-' + currentUser.id)
+        .channel('tasks-' + currentWorkspace.id)
         .on('postgres_changes', 
             {
                 event: '*',
                 schema: 'public',
                 table: 'tasks',
-                filter: `user_id=eq.${currentUser.id}`
+                filter: `workspace_id=eq.${currentWorkspace.id}`
             },
             async (payload) => {
                 console.log('Real-time update received:', payload);
@@ -450,7 +471,16 @@ async function editTask(taskId) {
     const minutes = String(deadlineDate.getMinutes()).padStart(2, '0');
     
     document.getElementById('taskDeadline').value = `${year}-${month}-${day}T${hours}:${minutes}`;
-    document.getElementById('taskTags').value = task.tags ? task.tags.join(', ') : '';
+    
+    // Обработка тегов (может быть массивом или null)
+    let tagsValue = '';
+    if (Array.isArray(task.tags)) {
+        tagsValue = task.tags.join(', ');
+    } else if (task.tags) {
+        tagsValue = task.tags;
+    }
+    
+    document.getElementById('taskTags').value = tagsValue;
     document.getElementById('taskId').value = taskId;
     
     taskModal.classList.add('active');
@@ -497,9 +527,15 @@ taskForm.addEventListener('submit', async (e) => {
             tags: document.getElementById('taskTags').value
                 .split(',')
                 .map(tag => tag.trim())
-                .filter(tag => tag.length > 0),
-            completed: false
+                .filter(tag => tag.length > 0)
         };
+        
+        if (!taskData.title || !taskData.priority || !taskData.deadline) {
+            showToast('Заполните обязательные поля: название, приоритет и дедлайн', 'error');
+            saveTaskText.style.display = 'inline';
+            saveTaskSpinner.style.display = 'none';
+            return;
+        }
         
         if (editingTaskId) {
             await window.supabaseAuth.updateTask(editingTaskId, taskData);
@@ -521,6 +557,11 @@ taskForm.addEventListener('submit', async (e) => {
 
 // Экспорт
 exportBtn.addEventListener('click', () => {
+    if (tasks.length === 0) {
+        showToast('Нет задач для экспорта', 'warning');
+        return;
+    }
+    
     window.supabaseAuth.exportTasks(tasks);
     showToast('Задачи экспортированы', 'success');
 });
