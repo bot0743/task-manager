@@ -49,7 +49,22 @@
             
             <form id="loginForm">
                 <div class="form-group">
-                    <label class="form-label" for="accessKey">Пароль для входа</label>
+                    <label class="form-label" for="workspaceId">ID пространства</label>
+                    <input 
+                        type="text" 
+                        id="workspaceId" 
+                        class="form-input" 
+                        placeholder="Введите ID пространства" 
+                        required
+                        autocomplete="off"
+                    >
+                    <small style="color: var(--gray-500); font-size: 12px;">
+                        ID выдается администратором
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="accessKey">Пароль</label>
                     <input 
                         type="password" 
                         id="accessKey" 
@@ -68,7 +83,7 @@
             </form>
             
             <div id="loginStatus" style="margin-top: 15px; text-align: center; font-size: 12px; color: var(--gray-500);">
-                <p>Введите пароль для доступа к пространству.</p>
+                <p>Для получения доступа обратитесь к администратору</p>
             </div>
         </div>
     </div>
