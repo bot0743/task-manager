@@ -2,155 +2,199 @@
 (function() {
     console.log('Загрузка Supabase конфигурации...');
     
-    // Проверяем, загружена ли библиотека Supabase
     if (typeof window.supabase === 'undefined') {
-        console.error('Supabase библиотека не загружена! Проверьте подключение.');
+        console.error('Supabase библиотека не загружена!');
         return;
     }
 
     const SUPABASE_URL = 'https://qaaxrfrfybysixsmbagt.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_dNCNU3K-sNZy0UmUVRhUxA_J7qHWjw3';
 
-    // Создаем клиент Supabase
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
             persistSession: true,
             autoRefreshToken: true,
-            detectSessionInUrl: false  // Изменим на false для PWA
+            detectSessionInUrl: false
         }
     });
 
     let currentUser = null;
+    let currentWorkspace = null;
 
-    // Аутентификация по паролю
-    async function loginWithPassword(password) {
-    try {
-        console.log('Попытка входа с паролем:', password);
-        
-        // Генерируем валидный email
-        // Используем хэш пароля как часть email для уникальности
-        const emailHash = btoa(password).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
-        const email = `user_${emailHash}@taskmanager.app`;  // Используем .app домен
-        
-        console.log('Сгенерированный email:', email);
-        
-        // Пытаемся войти
-        const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
+    // Получение списка разрешенных пространств
+    async function getAllowedWorkspaces() {
+        try {
+            // Здесь можно заменить на загрузку из файла или базы
+            // Пример списка разрешенных пространств
+            const allowedWorkspaces = {
+                'office-2024': 'office2024pass',
+                'projects': 'projects2024',
+                'team-alpha': 'alpha2024'
+                // Добавьте свои пространства и пароли
+            };
+            return allowedWorkspaces;
+        } catch (error) {
+            console.error('Ошибка загрузки пространств:', error);
+            return {};
+        }
+    }
 
-        if (loginError) {
-            console.log('Пользователь не найден, создаем нового...');
+    // Аутентификация по workspace ID и паролю
+    async function loginToWorkspace(workspaceId, password) {
+        try {
+            console.log('Попытка входа в пространство:', workspaceId);
             
-            // Регистрируем нового пользователя
-            const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                    data: {
-                        display_name: `User_${password.substring(0, 10)}`
-                    },
-                    emailRedirectTo: window.location.origin
-                }
-            });
-
-            if (signUpError) {
-                console.error('Ошибка регистрации:', signUpError);
-                
-                // Проверяем, если это ошибка подтверждения email
-                if (signUpError.message.includes('signup requires email confirmation')) {
-                    console.log('Требуется подтверждение email. Пробуем войти...');
-                    // Пробуем войти снова после "регистрации"
-                    const { data: retryLogin, error: retryError } = await supabaseClient.auth.signInWithPassword({
-                        email: email,
-                        password: password
-                    });
-                    
-                    if (retryError) {
-                        return { success: false, error: retryError.message };
-                    }
-                    
-                    currentUser = retryLogin.user;
-                    return { success: true, user: retryLogin.user };
-                }
-                
-                return { success: false, error: signUpError.message };
+            // Загружаем список разрешенных пространств
+            const allowedWorkspaces = await getAllowedWorkspaces();
+            
+            // Проверяем существует ли пространство
+            if (!allowedWorkspaces.hasOwnProperty(workspaceId)) {
+                return { 
+                    success: false, 
+                    error: 'Пространство не найдено или доступ запрещен' 
+                };
             }
             
-            console.log('Новый пользователь создан:', signUpData);
+            // Проверяем пароль
+            if (allowedWorkspaces[workspaceId] !== password) {
+                return { 
+                    success: false, 
+                    error: 'Неверный пароль' 
+                };
+            }
             
-            // Если пользователь создан, но требуется подтверждение
-            if (signUpData.user && signUpData.user.identities && signUpData.user.identities.length === 0) {
-                console.log('Требуется подтверждение email. Пробуем войти...');
+            // Генерируем уникальный email для этого пользователя в пространстве
+            // Можно использовать комбинацию workspace + случайный ID для уникальности
+            const userHash = btoa(`${workspaceId}:${Date.now()}`).replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+            const email = `user_${userHash}@${workspaceId}.taskmanager.app`;
+            
+            console.log('Сгенерированный email:', email);
+            
+            // Пытаемся войти
+            const { data: loginData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (loginError) {
+                console.log('Пользователь не найден, создаем нового...');
                 
-                // Ждем немного и пробуем войти
+                // Регистрируем нового пользователя для этого пространства
+                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            workspace_id: workspaceId,
+                            display_name: `Пользователь ${workspaceId}`
+                        }
+                    }
+                });
+
+                if (signUpError) {
+                    console.error('Ошибка регистрации:', signUpError);
+                    return { 
+                        success: false, 
+                        error: 'Ошибка создания пользователя' 
+                    };
+                }
+                
+                console.log('Новый пользователь создан для пространства:', workspaceId);
+                
+                // Ждем и пробуем войти снова
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                const { data: loginAfterSignup, error: loginAfterSignupError } = await supabaseClient.auth.signInWithPassword({
+                const { data: retryLogin, error: retryError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
                 
-                if (loginAfterSignupError) {
-                    return { 
-                        success: false, 
-                        error: 'Требуется подтверждение email. Проверьте почту или попробуйте другой пароль.' 
-                    };
+                if (retryError) {
+                    return { success: false, error: retryError.message };
                 }
                 
-                currentUser = loginAfterSignup.user;
-                return { success: true, user: loginAfterSignup.user };
+                currentUser = retryLogin.user;
+                currentWorkspace = workspaceId;
+                return { 
+                    success: true, 
+                    user: retryLogin.user, 
+                    workspace: workspaceId 
+                };
             }
             
-            currentUser = signUpData.user;
-            return { success: true, user: signUpData.user };
+            console.log('Вход успешен в пространство:', workspaceId);
+            currentUser = loginData.user;
+            currentWorkspace = workspaceId;
+            
+            // Проверяем метаданные пользователя
+            if (loginData.user.user_metadata?.workspace_id !== workspaceId) {
+                // Обновляем метаданные если нужно
+                await supabaseClient.auth.updateUser({
+                    data: { workspace_id: workspaceId }
+                });
+            }
+            
+            return { 
+                success: true, 
+                user: loginData.user, 
+                workspace: workspaceId 
+            };
+            
+        } catch (error) {
+            console.error('Ошибка входа:', error);
+            return { success: false, error: error.message };
         }
-        
-        console.log('Вход успешен:', loginData.user.email);
-        currentUser = loginData.user;
-        return { success: true, user: loginData.user };
-        
-    } catch (error) {
-        console.error('Ошибка входа:', error);
-        return { success: false, error: error.message };
     }
-}
 
     // Выход из системы
     async function logout() {
         const { error } = await supabaseClient.auth.signOut();
         currentUser = null;
+        currentWorkspace = null;
         return !error;
     }
 
     // Проверка активной сессии
     async function checkSession() {
         const { data, error } = await supabaseClient.auth.getSession();
-        console.log('Проверка сессии:', data);
         
         if (data.session) {
             currentUser = data.session.user;
-            console.log('Пользователь найден:', currentUser.email);
-            return { success: true, user: currentUser };
+            currentWorkspace = currentUser.user_metadata?.workspace_id;
+            
+            if (currentWorkspace) {
+                // Проверяем валидность workspace
+                const allowedWorkspaces = await getAllowedWorkspaces();
+                if (!allowedWorkspaces.hasOwnProperty(currentWorkspace)) {
+                    console.log('Рабочее пространство больше не доступно');
+                    await logout();
+                    return { success: false };
+                }
+                
+                return { 
+                    success: true, 
+                    user: currentUser, 
+                    workspace: currentWorkspace 
+                };
+            }
         }
         return { success: false };
     }
 
-    // Получение задач
+    // Получение задач с фильтром по workspace
     async function getTasks() {
-        if (!currentUser) {
+        if (!currentUser || !currentWorkspace) {
             console.log('Не авторизован для получения задач');
             return [];
         }
         
         try {
-            console.log('Получение задач для пользователя:', currentUser.id);
+            console.log('Получение задач для пространства:', currentWorkspace);
             
             const { data, error } = await supabaseClient
                 .from('tasks')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('workspace_id', currentWorkspace)
                 .order('priority', { ascending: false })
                 .order('deadline', { ascending: true });
             
@@ -167,19 +211,20 @@
         }
     }
 
-    // Добавление задачи
+    // Добавление задачи с привязкой к workspace
     async function addTask(task) {
-        if (!currentUser) {
+        if (!currentUser || !currentWorkspace) {
             throw new Error('Не авторизован');
         }
         
         const taskData = {
             ...task,
             user_id: currentUser.id,
+            workspace_id: currentWorkspace,
             deadline: new Date(task.deadline).toISOString()
         };
         
-        console.log('Добавление задачи:', taskData);
+        console.log('Добавление задачи в пространство:', currentWorkspace);
         
         const { data, error } = await supabaseClient
             .from('tasks')
@@ -195,8 +240,10 @@
         return data;
     }
 
-    // Обновление задачи
+    // Обновление задачи с проверкой workspace
     async function updateTask(taskId, updates) {
+        if (!currentWorkspace) throw new Error('Не авторизован');
+        
         const updateData = {
             ...updates,
             updated_at: new Date().toISOString()
@@ -206,7 +253,18 @@
             updateData.deadline = new Date(updates.deadline).toISOString();
         }
         
-        console.log('Обновление задачи:', taskId, updateData);
+        console.log('Обновление задачи в пространстве:', currentWorkspace);
+        
+        // Проверяем что задача принадлежит текущему workspace
+        const { data: task, error: checkError } = await supabaseClient
+            .from('tasks')
+            .select('workspace_id')
+            .eq('id', taskId)
+            .single();
+        
+        if (checkError || task.workspace_id !== currentWorkspace) {
+            throw new Error('Задача не найдена или доступ запрещен');
+        }
         
         const { data, error } = await supabaseClient
             .from('tasks')
@@ -223,9 +281,22 @@
         return data;
     }
 
-    // Удаление задачи
+    // Удаление задачи с проверкой workspace
     async function deleteTask(taskId) {
-        console.log('Удаление задачи:', taskId);
+        if (!currentWorkspace) throw new Error('Не авторизован');
+        
+        // Проверяем что задача принадлежит текущему workspace
+        const { data: task, error: checkError } = await supabaseClient
+            .from('tasks')
+            .select('workspace_id')
+            .eq('id', taskId)
+            .single();
+        
+        if (checkError || task.workspace_id !== currentWorkspace) {
+            throw new Error('Задача не найдена или доступ запрещен');
+        }
+        
+        console.log('Удаление задачи из пространства:', currentWorkspace);
         
         const { error } = await supabaseClient
             .from('tasks')
@@ -240,14 +311,14 @@
         return true;
     }
 
-    // Подписка на обновления в реальном времени
+    // Подписка на обновления в реальном времени с фильтром по workspace
     function subscribeToTasks(callback) {
-        if (!currentUser) {
+        if (!currentUser || !currentWorkspace) {
             console.log('Не авторизован для подписки');
             return null;
         }
         
-        console.log('Подписка на обновления для пользователя:', currentUser.id);
+        console.log('Подписка на обновления для пространства:', currentWorkspace);
         
         const subscription = supabaseClient
             .channel('tasks-channel')
@@ -256,10 +327,10 @@
                     event: '*',
                     schema: 'public',
                     table: 'tasks',
-                    filter: `user_id=eq.${currentUser.id}`
+                    filter: `workspace_id=eq.${currentWorkspace}`
                 },
                 (payload) => {
-                    console.log('Real-time update получен:', payload);
+                    console.log('Real-time update получен для пространства:', currentWorkspace);
                     callback(payload);
                 }
             )
@@ -272,6 +343,7 @@
     function exportTasks(tasks) {
         const data = {
             exported_at: new Date().toISOString(),
+            workspace: currentWorkspace,
             tasks: tasks
         };
         
@@ -279,7 +351,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `tasks_${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `tasks_${currentWorkspace}_${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -288,9 +360,10 @@
 
     // Экспорт функций в глобальную область видимости
     window.supabaseAuth = {
-        loginWithPassword,
+        loginWithPassword: loginToWorkspace, // Переименовали для совместимости
         logout,
         getCurrentUser: () => currentUser,
+        getCurrentWorkspace: () => currentWorkspace,
         getTasks,
         addTask,
         updateTask,
