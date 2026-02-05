@@ -1,0 +1,14 @@
+{
+    "office-2026": {
+        "password": "office2024pass",
+        "name": "Офис 2026",
+        "created": "2026-01-01",
+        "admin": "admin@example.com"
+    },
+    "projects": {
+        "password": "projects2026",
+        "name": "Проекты",
+        "created": "2026-01-15",
+        "admin": "admin@example.com"
+    }
+}
