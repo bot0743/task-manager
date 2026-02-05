@@ -2,62 +2,184 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Управление пространствами</title>
+    <title>Админ-панель Task Manager</title>
     <style>
-        body { font-family: Arial; padding: 20px; }
-        .workspace { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
-        .users { margin-top: 10px; padding-left: 20px; }
-        input, button { margin: 5px; padding: 8px; }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        input, button { padding: 8px; margin: 5px; }
+        .message { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
-    <h1>Управление пространствами</h1>
-    
-    <div id="adminLogin">
-        <h3>Вход администратора</h3>
-        <input type="password" id="adminPassword" placeholder="Админ пароль">
-        <button onclick="adminLogin()">Войти</button>
-    </div>
-    
-    <div id="adminPanel" style="display: none;">
-        <h3>Создать новое пространство</h3>
-        <input type="text" id="newWorkspaceId" placeholder="ID пространства">
-        <input type="text" id="newWorkspaceName" placeholder="Название">
-        <input type="password" id="newWorkspacePass" placeholder="Пароль">
-        <button onclick="createWorkspace()">Создать</button>
+    <div class="container">
+        <h1>Админ-панель Task Manager</h1>
         
-        <h3>Существующие пространства</h3>
-        <div id="workspacesList"></div>
+        <div class="section">
+            <h2>Создать новое пространство (Workspace)</h2>
+            <input type="text" id="workspaceName" placeholder="Название пространства">
+            <button onclick="createWorkspace()">Создать</button>
+            <div id="workspaceMessage"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Добавить пользователя</h2>
+            <input type="text" id="username" placeholder="Логин пользователя">
+            <input type="password" id="userPassword" placeholder="Пароль">
+            <select id="workspaceSelect">
+                <option value="">Выберите пространство</option>
+            </select>
+            <button onclick="createUser()">Добавить</button>
+            <div id="userMessage"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Список пространств</h2>
+            <div id="workspacesList"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Список пользователей</h2>
+            <div id="usersList"></div>
+        </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const ADMIN_PASSWORD = 'testsystem';
+        const SUPABASE_URL = 'https://qaaxrfrfybysixsmbagt.supabase.co';
+        const SUPABASE_SERVICE_KEY = 'ВАШ_SERVICE_ROLE_KEY'; // Замените на ваш service role key из Supabase
         
-        function adminLogin() {
-            const pass = document.getElementById('adminPassword').value;
-            if (pass === ADMIN_PASSWORD) {
-                document.getElementById('adminLogin').style.display = 'none';
-                document.getElementById('adminPanel').style.display = 'block';
-                loadWorkspaces();
-            } else {
-                alert('Неверный пароль администратора');
-            }
-        }
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        
+        // Загружаем пространства при загрузке
+        loadWorkspaces();
+        loadUsers();
         
         async function loadWorkspaces() {
-            // Загрузка списка пространств из базы или файла
-            // В реальном проекте это будет запрос к Supabase
+            const { data, error } = await supabase
+                .from('workspace')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('Ошибка загрузки пространств:', error);
+                return;
+            }
+            
+            // Обновляем список в селекте
+            const select = document.getElementById('workspaceSelect');
+            select.innerHTML = '<option value="">Выберите пространство</option>';
+            data.forEach(ws => {
+                const option = document.createElement('option');
+                option.value = ws.id;
+                option.textContent = `${ws.name} (ID: ${ws.id.substring(0, 8)}...)`;
+                select.appendChild(option);
+            });
+            
+            // Показываем список
+            const list = document.getElementById('workspacesList');
+            list.innerHTML = data.map(ws => `
+                <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                    <strong>${ws.name}</strong><br>
+                    ID: ${ws.id}<br>
+                    Создано: ${new Date(ws.created_at).toLocaleString()}
+                </div>
+            `).join('');
         }
         
-        function createWorkspace() {
-            const id = document.getElementById('newWorkspaceId').value;
-            const name = document.getElementById('newWorkspaceName').value;
-            const pass = document.getElementById('newWorkspacePass').value;
-            
-            if (id && name && pass) {
-                // Сохранить в базе данных
-                alert(`Пространство ${name} создано!\nID: ${id}\nПароль: ${pass}`);
+        async function createWorkspace() {
+            const name = document.getElementById('workspaceName').value.trim();
+            if (!name) {
+                showMessage('workspaceMessage', 'Введите название пространства', 'error');
+                return;
             }
+            
+            const { data, error } = await supabase
+                .from('workspace')
+                .insert([{ name: name }])
+                .select()
+                .single();
+            
+            if (error) {
+                showMessage('workspaceMessage', 'Ошибка: ' + error.message, 'error');
+                return;
+            }
+            
+            showMessage('workspaceMessage', `Пространство "${name}" создано! ID: ${data.id}`, 'success');
+            document.getElementById('workspaceName').value = '';
+            loadWorkspaces();
+        }
+        
+        async function createUser() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('userPassword').value.trim();
+            const workspaceId = document.getElementById('workspaceSelect').value;
+            
+            if (!username || !password || !workspaceId) {
+                showMessage('userMessage', 'Заполните все поля', 'error');
+                return;
+            }
+            
+            // Хэшируем пароль
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            const passwordHash = Array.from(new Uint8Array(hash))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+            
+            const { data: userData, error } = await supabase
+                .from('app_users')
+                .insert([{
+                    username: username,
+                    password_hash: passwordHash,
+                    workspace_id: workspaceId
+                }])
+                .select()
+                .single();
+            
+            if (error) {
+                showMessage('userMessage', 'Ошибка: ' + error.message, 'error');
+                return;
+            }
+            
+            showMessage('userMessage', `Пользователь "${username}" создан!`, 'success');
+            document.getElementById('username').value = '';
+            document.getElementById('userPassword').value = '';
+            loadUsers();
+        }
+        
+        async function loadUsers() {
+            const { data, error } = await supabase
+                .from('app_users')
+                .select(`
+                    *,
+                    workspace:workspace_id(name)
+                `)
+                .order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error('Ошибка загрузки пользователей:', error);
+                return;
+            }
+            
+            const list = document.getElementById('usersList');
+            list.innerHTML = data.map(user => `
+                <div style="margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+                    <strong>${user.username}</strong><br>
+                    Пространство: ${user.workspace?.name || 'Неизвестно'}<br>
+                    Создан: ${new Date(user.created_at).toLocaleString()}
+                </div>
+            `).join('');
+        }
+        
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `message ${type}`;
+            setTimeout(() => element.textContent = '', 3000);
         }
     </script>
 </body>
