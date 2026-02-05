@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin - Управление пространствами</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .workspace { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
+        .users { margin-top: 10px; padding-left: 20px; }
+        input, button { margin: 5px; padding: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Управление пространствами</h1>
+    
+    <div id="adminLogin">
+        <h3>Вход администратора</h3>
+        <input type="password" id="adminPassword" placeholder="Админ пароль">
+        <button onclick="adminLogin()">Войти</button>
+    </div>
+    
+    <div id="adminPanel" style="display: none;">
+        <h3>Создать новое пространство</h3>
+        <input type="text" id="newWorkspaceId" placeholder="ID пространства">
+        <input type="text" id="newWorkspaceName" placeholder="Название">
+        <input type="password" id="newWorkspacePass" placeholder="Пароль">
+        <button onclick="createWorkspace()">Создать</button>
+        
+        <h3>Существующие пространства</h3>
+        <div id="workspacesList"></div>
+    </div>
+    
+    <script>
+        const ADMIN_PASSWORD = 'ваш_супер_пароль'; // Измените на свой
+        
+        function adminLogin() {
+            const pass = document.getElementById('adminPassword').value;
+            if (pass === ADMIN_PASSWORD) {
+                document.getElementById('adminLogin').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                loadWorkspaces();
+            } else {
+                alert('Неверный пароль администратора');
+            }
+        }
+        
+        async function loadWorkspaces() {
+            // Загрузка списка пространств из базы или файла
+            // В реальном проекте это будет запрос к Supabase
+        }
+        
+        function createWorkspace() {
+            const id = document.getElementById('newWorkspaceId').value;
+            const name = document.getElementById('newWorkspaceName').value;
+            const pass = document.getElementById('newWorkspacePass').value;
+            
+            if (id && name && pass) {
+                // Сохранить в базе данных
+                alert(`Пространство ${name} создано!\nID: ${id}\nПароль: ${pass}`);
+            }
+        }
+    </script>
+</body>
+</html>
