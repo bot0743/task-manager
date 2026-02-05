@@ -269,7 +269,14 @@ function createTaskElement(task) {
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const password = accessKeyInput.value.trim();
+    const workspaceId = document.getElementById('workspaceId').value.trim();
+    const password = document.getElementById('accessKey').value.trim();
+    
+    if (workspaceId.length === 0) {
+        showToast('Введите ID пространства', 'error');
+        return;
+    }
+    
     if (password.length < 6) {
         showToast('Пароль должен быть не менее 6 символов', 'error');
         return;
@@ -283,11 +290,11 @@ loginForm.addEventListener('submit', async (e) => {
     loginSpinner.style.display = 'inline-block';
     
     try {
-        const result = await window.supabaseAuth.loginWithPassword(password);
+        const result = await window.supabaseAuth.loginWithPassword(workspaceId, password);
         
         if (result.success) {
             currentUser = result.user;
-            currentUserBadge.textContent = `ID: ${currentUser.id.substring(0, 8)}`;
+            currentUserBadge.textContent = `Пространство: ${result.workspace}`;
             loginScreen.style.display = 'none';
             appScreen.style.display = 'flex';
             
@@ -295,7 +302,7 @@ loginForm.addEventListener('submit', async (e) => {
             startRealtimeSubscription();
             updateSyncStatus(true);
             
-            showToast('Вход выполнен! Задачи синхронизируются в реальном времени', 'success');
+            showToast(`Вход выполнен в пространство: ${result.workspace}`, 'success');
         } else {
             showToast(`Ошибка: ${result.error}`, 'error');
         }
@@ -318,7 +325,8 @@ logoutBtn.addEventListener('click', async () => {
     
     loginScreen.style.display = 'flex';
     appScreen.style.display = 'none';
-    accessKeyInput.value = '';
+    document.getElementById('workspaceId').value = '';
+    document.getElementById('accessKey').value = '';
     tasks = [];
     currentUser = null;
     updateSyncStatus(false);
