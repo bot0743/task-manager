@@ -1,0 +1,10 @@
+-- Создание пространства
+INSERT INTO workspace (name) VALUES ('Название пространства') RETURNING id;
+
+-- Создание пользователя и прявязка к пространству
+INSERT INTO app_users (username, password_hash, workspace_id) 
+VALUES (
+    'имя_пользователя',
+    encode(digest('пароль', 'sha256'), 'hex'),
+    'id_пространства'
+);
