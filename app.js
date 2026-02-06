@@ -622,4 +622,4 @@ function showToast(message, type = 'info') {
 }
 
 // Инициализация
-init();
+//init();
