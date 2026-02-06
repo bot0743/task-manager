@@ -723,3 +723,43 @@ body {
         padding: 0 2px;
     }
 }
+
+.admin-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+.icon-btn.admin-btn {
+    background: #10B981;
+    color: white;
+}
+
+.icon-btn.admin-btn:hover {
+    background: #059669;
+}
+
+/* Анимации для админ-панели */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
