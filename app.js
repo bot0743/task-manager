@@ -1006,4 +1006,127 @@ async function createUserFromAdminPanel() {
     }
     
     try {
-       
+        // Используем функцию adminCreateUser из supabaseAuth (если она есть)
+        if (window.supabaseAuth.adminCreateUser) {
+            const result = await window.supabaseAuth.adminCreateUser(username, password, workspaceId);
+            
+            if (result.success) {
+                showAdminMessage(`✅ Пользователь "${username}" создан успешно!`, 'success');
+                
+                // Очищаем поля
+                document.getElementById('adminUsername').value = '';
+                document.getElementById('adminPassword').value = '';
+                
+                // Обновляем список пользователей
+                await loadAdminUsersList();
+                
+                // Обновляем статистику
+                await loadAdminData();
+            } else {
+                showAdminMessage(`❌ Ошибка: ${result.error}`, 'error');
+            }
+        } else {
+            // Альтернативный метод - напрямую через Supabase
+            const passwordHash = await hashPassword(password);
+            
+            const { data, error } = await window.supabaseAuth.supabase
+                .from('app_users')
+                .insert([{
+                    username: username,
+                    password_hash: passwordHash,
+                    workspace_id: workspaceId
+                }])
+                .select()
+                .single();
+            
+            if (error) {
+                if (error.code === '23505') {
+                    throw new Error('Пользователь с таким логином уже существует');
+                }
+                throw error;
+            }
+            
+            showAdminMessage(`✅ Пользователь "${username}" создан успешно!`, 'success');
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminPassword').value = '';
+            
+            await loadAdminUsersList();
+            await loadAdminData();
+        }
+        
+    } catch (error) {
+        console.error('Ошибка создания пользователя:', error);
+        showAdminMessage(`❌ Ошибка: ${error.message}`, 'error');
+    }
+}
+
+// Вспомогательная функция для хэширования пароля
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Показать сообщение в админ-панели
+function showAdminMessage(message, type) {
+    const element = document.getElementById('adminMessage');
+    if (!element) return;
+    
+    element.innerHTML = message;
+    element.style.display = 'block';
+    element.style.background = type === 'success' ? '#D1FAE5' : '#FEE2E2';
+    element.style.color = type === 'success' ? '#065F46' : '#991B1B';
+    element.style.border = `1px solid ${type === 'success' ? '#A7F3D0' : '#FECACA'}`;
+    
+    if (type === 'success') {
+        setTimeout(() => {
+            element.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// Вспомогательные функции
+function getPriorityText(priority) {
+    const texts = { high: 'Высокий', medium: 'Средний', low: 'Низкий' };
+    return texts[priority] || priority;
+}
+
+function getDefaultDeadline() {
+    const now = new Date();
+    now.setHours(now.getHours() + 24);
+    
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast';
+    
+    if (type === 'success') {
+        toast.style.background = 'var(--success)';
+    } else if (type === 'error') {
+        toast.style.background = 'var(--danger)';
+    } else if (type === 'warning') {
+        toast.style.background = 'var(--warning)';
+    } else {
+        toast.style.background = 'var(--primary)';
+    }
+    
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// Инициализация
+init();
