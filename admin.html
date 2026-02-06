@@ -405,64 +405,20 @@
     </div>
 
     <!-- ВСТРОЕННАЯ БИБЛИОТЕКА SUPABASE -->
-    <script>
-        // Минимальная версия Supabase клиента
-        function createSupabaseClient(url, key) {
-            return {
-                from: (table) => ({
-                    select: (columns) => ({
-                        eq: (column, value) => ({
-                            order: (orderBy, options) => ({
-                                async then(resolve) {
-                                    try {
-                                        const response = await fetch(`${url}/rest/v1/${table}?${column}=eq.${value}&select=${columns}&order=${orderBy}.${options.ascending ? 'asc' : 'desc'}`, {
-                                            headers: {
-                                                'apikey': key,
-                                                'Authorization': `Bearer ${key}`,
-                                                'Content-Type': 'application/json'
-                                            }
-                                        });
-                                        const data = await response.json();
-                                        resolve({ data, error: null });
-                                    } catch (error) {
-                                        resolve({ data: null, error });
-                                    }
-                                }
-                            }),
-                            single: async () => {
-                                try {
-                                    const response = await fetch(`${url}/rest/v1/${table}?${column}=eq.${value}&select=${columns}`, {
-                                        headers: {
-                                            'apikey': key,
-                                            'Authorization': `Bearer ${key}`,
-                                            'Content-Type': 'application/json'
-                                        }
-                                    });
-                                    const data = await response.json();
-                                    return { data: data[0], error: null };
-                                } catch (error) {
-                                    return { data: null, error };
-                                }
-                            },
-                            async then(resolve) {
-                                try {
-                                    const response = await fetch(`${url}/rest/v1/${table}?${column}=eq.${value}&select=${columns}`, {
-                                        headers: {
-                                            'apikey': key,
-                                            'Authorization': `Bearer ${key}`,
-                                            'Content-Type': 'application/json'
-                                        }
-                                    });
-                                    const data = await response.json();
-                                    resolve({ data, error: null });
-                                } catch (error) {
-                                    resolve({ data: null, error });
-                                }
-                            }
-                        }),
+    <!-- ВСТРОЕННАЯ БИБЛИОТЕКА SUPABASE - ИСПРАВЛЕННАЯ ВЕРСИЯ -->
+<script>
+    // Минимальная версия Supabase клиента
+    function createSupabaseClient(url, key) {
+        return {
+            from: (table) => ({
+                select: (columns) => {
+                    const baseUrl = `${url}/rest/v1/${table}`;
+                    
+                    return {
+                        // Простой запрос без фильтров
                         async then(resolve) {
                             try {
-                                const response = await fetch(`${url}/rest/v1/${table}?select=${columns}`, {
+                                const response = await fetch(`${baseUrl}?select=${columns}`, {
                                     headers: {
                                         'apikey': key,
                                         'Authorization': `Bearer ${key}`,
@@ -475,10 +431,67 @@
                                 resolve({ data: null, error });
                             }
                         },
+                        
+                        // С фильтром eq
+                        eq: (column, value) => ({
+                            async then(resolve) {
+                                try {
+                                    const response = await fetch(`${baseUrl}?${column}=eq.${value}&select=${columns}`, {
+                                        headers: {
+                                            'apikey': key,
+                                            'Authorization': `Bearer ${key}`,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    });
+                                    const data = await response.json();
+                                    resolve({ data, error: null });
+                                } catch (error) {
+                                    resolve({ data: null, error });
+                                }
+                            },
+                            
+                            // Для single записи
+                            single: async () => {
+                                try {
+                                    const response = await fetch(`${baseUrl}?${column}=eq.${value}&select=${columns}`, {
+                                        headers: {
+                                            'apikey': key,
+                                            'Authorization': `Bearer ${key}`,
+                                            'Content-Type': 'application/json'
+                                        }
+                                    });
+                                    const data = await response.json();
+                                    return { data: data[0], error: null };
+                                } catch (error) {
+                                    return { data: null, error };
+                                }
+                            },
+                            
+                            // Сортировка
+                            order: (orderBy, options) => ({
+                                async then(resolve) {
+                                    try {
+                                        const response = await fetch(`${baseUrl}?${column}=eq.${value}&select=${columns}&order=${orderBy}.${options.ascending ? 'asc' : 'desc'}`, {
+                                            headers: {
+                                                'apikey': key,
+                                                'Authorization': `Bearer ${key}`,
+                                                'Content-Type': 'application/json'
+                                            }
+                                        });
+                                        const data = await response.json();
+                                        resolve({ data, error: null });
+                                    } catch (error) {
+                                        resolve({ data: null, error });
+                                    }
+                                }
+                            })
+                        }),
+                        
+                        // Сортировка
                         order: (orderBy, options) => ({
                             async then(resolve) {
                                 try {
-                                    const response = await fetch(`${url}/rest/v1/${table}?select=${columns}&order=${orderBy}.${options.ascending ? 'asc' : 'desc'}`, {
+                                    const response = await fetch(`${baseUrl}?select=${columns}&order=${orderBy}.${options.ascending ? 'asc' : 'desc'}`, {
                                         headers: {
                                             'apikey': key,
                                             'Authorization': `Bearer ${key}`,
@@ -492,57 +505,41 @@
                                 }
                             }
                         })
-                    }),
-                    insert: (data) => ({
-                        select: (columns) => ({
-                            single: async () => {
-                                try {
-                                    const response = await fetch(`${url}/rest/v1/${table}?select=${columns}`, {
-                                        method: 'POST',
-                                        headers: {
-                                            'apikey': key,
-                                            'Authorization': `Bearer ${key}`,
-                                            'Content-Type': 'application/json',
-                                            'Prefer': 'return=representation'
-                                        },
-                                        body: JSON.stringify(data[0])
-                                    });
-                                    const result = await response.json();
-                                    return { data: result[0], error: null };
-                                } catch (error) {
-                                    return { data: null, error };
-                                }
+                    };
+                },
+                
+                // Вставка данных
+                insert: (data) => ({
+                    select: (columns) => ({
+                        single: async () => {
+                            try {
+                                const response = await fetch(`${baseUrl}?select=${columns}`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'apikey': key,
+                                        'Authorization': `Bearer ${key}`,
+                                        'Content-Type': 'application/json',
+                                        'Prefer': 'return=representation'
+                                    },
+                                    body: JSON.stringify(data[0])
+                                });
+                                const result = await response.json();
+                                return { data: result[0], error: null };
+                            } catch (error) {
+                                return { data: null, error };
                             }
-                        })
-                    }),
-                    update: (data) => ({
-                        eq: (column, value) => ({
-                            eq: (column2, value2) => ({
-                                select: (columns) => ({
-                                    single: async () => {
-                                        try {
-                                            const response = await fetch(`${url}/rest/v1/${table}?${column}=eq.${value}&${column2}=eq.${value2}&select=${columns}`, {
-                                                method: 'PATCH',
-                                                headers: {
-                                                    'apikey': key,
-                                                    'Authorization': `Bearer ${key}`,
-                                                    'Content-Type': 'application/json',
-                                                    'Prefer': 'return=representation'
-                                                },
-                                                body: JSON.stringify(data)
-                                            });
-                                            const result = await response.json();
-                                            return { data: result[0], error: null };
-                                        } catch (error) {
-                                            return { data: null, error };
-                                        }
-                                    }
-                                })
-                            }),
+                        }
+                    })
+                }),
+                
+                // Обновление данных
+                update: (data) => ({
+                    eq: (column, value) => ({
+                        eq: (column2, value2) => ({
                             select: (columns) => ({
                                 single: async () => {
                                     try {
-                                        const response = await fetch(`${url}/rest/v1/${table}?${column}=eq.${value}&select=${columns}`, {
+                                        const response = await fetch(`${baseUrl}?${column}=eq.${value}&${column2}=eq.${value2}&select=${columns}`, {
                                             method: 'PATCH',
                                             headers: {
                                                 'apikey': key,
@@ -559,34 +556,56 @@
                                     }
                                 }
                             })
-                        })
-                    }),
-                    delete: () => ({
-                        eq: (column, value) => ({
-                            async then(resolve) {
+                        }),
+                        select: (columns) => ({
+                            single: async () => {
                                 try {
-                                    await fetch(`${url}/rest/v1/${table}?${column}=eq.${value}`, {
-                                        method: 'DELETE',
+                                    const response = await fetch(`${baseUrl}?${column}=eq.${value}&select=${columns}`, {
+                                        method: 'PATCH',
                                         headers: {
                                             'apikey': key,
-                                            'Authorization': `Bearer ${key}`
-                                        }
+                                            'Authorization': `Bearer ${key}`,
+                                            'Content-Type': 'application/json',
+                                            'Prefer': 'return=representation'
+                                        },
+                                        body: JSON.stringify(data)
                                     });
-                                    resolve({ error: null });
+                                    const result = await response.json();
+                                    return { data: result[0], error: null };
                                 } catch (error) {
-                                    resolve({ error });
+                                    return { data: null, error };
                                 }
                             }
                         })
                     })
+                }),
+                
+                // Удаление данных
+                delete: () => ({
+                    eq: (column, value) => ({
+                        async then(resolve) {
+                            try {
+                                await fetch(`${baseUrl}?${column}=eq.${value}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'apikey': key,
+                                        'Authorization': `Bearer ${key}`
+                                    }
+                                });
+                                resolve({ error: null });
+                            } catch (error) {
+                                resolve({ error });
+                            }
+                        }
+                    })
                 })
-            };
-        }
-    </script>
+            })
+        };
+    }
+</script>
 
     <!-- ОСНОВНОЙ СКРИПТ -->
     <script>
-        // КОНФИГУРАЦИЯ - ЗАМЕНИТЕ НА ВАШИ ДАННЫЕ!
         const SUPABASE_URL = 'https://qaaxrfrfybysixsmbagt.supabase.co';
         const SUPABASE_SERVICE_KEY = 'sb_secret_PE-Zsm3EPpQoZmRKjBP4mQ_82J__dG-';
         
@@ -601,8 +620,8 @@
                 // Создаем Supabase клиент
                 supabase = createSupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
                 
-                // Проверяем подключение
-                const { data, error } = await supabase.from('workspace').select('id').limit(1);
+                // УПРОЩЕННАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ (без .limit())
+                const { data, error } = await supabase.from('workspace').select('id');
                 
                 if (error) {
                     throw new Error(`Ошибка подключения: ${error.message || 'Не удалось подключиться к базе'}`);
