@@ -5,7 +5,6 @@ let editingTaskId = null;
 let currentUser = null;
 let currentWorkspace = null;
 let tasksSubscription = null;
-let adminMode = false;
 
 // DOM Elements
 const loginScreen = document.getElementById('loginScreen');
@@ -34,9 +33,6 @@ const activeTasks = document.getElementById('activeTasks');
 const completedTasks = document.getElementById('completedTasks');
 const overdueTasks = document.getElementById('overdueTasks');
 
-// Добавляем кнопку админа в заголовок
-let adminButton = null;
-
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM загружен, инициализация приложения...');
     
@@ -57,14 +53,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (sessionResult.success) {
                 currentUser = sessionResult.user;
                 currentWorkspace = sessionResult.workspace;
-                
-                // Проверяем, является ли пользователь админом
-                checkAdminStatus();
-                
-                updateUserInterface();
+                currentUserBadge.textContent = `${currentUser.username} | ${currentWorkspace.name}`;
                 loginScreen.style.display = 'none';
                 appScreen.style.display = 'flex';
-                
                 await loadTasks();
                 startRealtimeSubscription();
                 updateSyncStatus(true);
@@ -86,10 +77,7 @@ async function init() {
         if (sessionResult.success) {
             currentUser = sessionResult.user;
             currentWorkspace = sessionResult.workspace;
-            
-            checkAdminStatus();
-            updateUserInterface();
-            
+            currentUserBadge.textContent = `${currentUser.username} | ${currentWorkspace.name}`;
             loginScreen.style.display = 'none';
             appScreen.style.display = 'flex';
             await loadTasks();
@@ -98,68 +86,6 @@ async function init() {
         }
     } catch (error) {
         console.error('Ошибка проверки сессии:', error);
-    }
-}
-
-// Проверка статуса администратора
-function checkAdminStatus() {
-    if (!currentUser) return;
-    
-    // Админ определяется по имени пользователя (можно изменить на поле is_admin в базе)
-    const adminUsernames = ['admin', 'administrator', 'root', 'superuser'];
-    adminMode = adminUsernames.includes(currentUser.username.toLowerCase());
-    
-    console.log('Проверка админ статуса:', {
-        username: currentUser.username,
-        isAdmin: adminMode
-    });
-    
-    // Если админ - добавляем кнопку админ-панели
-    if (adminMode) {
-        addAdminButton();
-    }
-}
-
-// Добавление кнопки админа в интерфейс
-function addAdminButton() {
-    if (adminButton) return;
-    
-    // Создаем кнопку админа
-    adminButton = document.createElement('button');
-    adminButton.innerHTML = '<i class="fas fa-user-shield"></i>';
-    adminButton.className = 'icon-btn';
-    adminButton.title = 'Панель администратора';
-    adminButton.style.background = '#10B981';
-    adminButton.style.color = 'white';
-    adminButton.style.marginRight = '10px';
-    
-    adminButton.addEventListener('click', () => {
-        showAdminPanel();
-    });
-    
-    // Добавляем кнопку в заголовок
-    const headerActions = document.querySelector('.header-actions');
-    if (headerActions) {
-        headerActions.insertBefore(adminButton, headerActions.firstChild);
-    }
-}
-
-// Обновление интерфейса пользователя
-function updateUserInterface() {
-    if (!currentUser || !currentWorkspace) return;
-    
-    // Отображаем информацию о пользователе
-    let userText = `${currentUser.username} | ${currentWorkspace.name}`;
-    if (adminMode) {
-        userText = `👑 ${userText}`;
-    }
-    currentUserBadge.textContent = userText;
-    
-    // Для админа добавляем дополнительные возможности
-    if (adminMode) {
-        // Можно добавить дополнительные стили для админа
-        currentUserBadge.style.color = '#10B981';
-        currentUserBadge.style.fontWeight = 'bold';
     }
 }
 
@@ -294,13 +220,6 @@ function createTaskElement(task) {
             <i class="fas fa-hourglass-end"></i> ${hoursLeft}ч
            </span>` : '';
     
-    // Добавляем информацию о создателе (только для админа)
-    const creatorInfo = adminMode && task.created_by_user 
-        ? `<div style="margin-top: 5px; font-size: 11px; color: var(--gray-500);">
-            <i class="fas fa-user"></i> Создал: ${task.created_by_user.username}
-           </div>` 
-        : '';
-    
     div.innerHTML = `
         <div class="task-header">
             <div class="task-title ${task.completed ? 'completed' : ''}">
@@ -314,8 +233,6 @@ function createTaskElement(task) {
         ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
         
         ${tagsHtml}
-        
-        ${creatorInfo}
         
         <div class="task-footer">
             <div class="task-deadline ${deadlineClass}">
@@ -387,14 +304,11 @@ loginForm.addEventListener('submit', async (e) => {
             currentUser = result.user;
             currentWorkspace = result.workspace;
             
-            // Проверяем админ статус
-            checkAdminStatus();
-            
             // Сохраняем сессию
             window.supabaseAuth.saveSession(currentUser, currentWorkspace);
             
             // Обновляем интерфейс
-            updateUserInterface();
+            currentUserBadge.textContent = `${currentUser.username} | ${currentWorkspace.name}`;
             loginScreen.style.display = 'none';
             appScreen.style.display = 'flex';
             
@@ -430,14 +344,6 @@ logoutBtn.addEventListener('click', async () => {
     tasks = [];
     currentUser = null;
     currentWorkspace = null;
-    adminMode = false;
-    
-    // Удаляем кнопку админа если была
-    if (adminButton) {
-        adminButton.remove();
-        adminButton = null;
-    }
-    
     updateSyncStatus(false);
     showToast('Вы вышли из системы', 'info');
 });
@@ -673,419 +579,6 @@ syncStatusBtn.addEventListener('click', () => {
                         syncIndicator.style.background === '#10B981';
     showToast(isConnected ? 'Синхронизация активна' : 'Синхронизация отключена', 'info');
 });
-
-// АДМИН-ПАНЕЛЬ
-function showAdminPanel() {
-    if (!adminMode) {
-        showToast('Доступ запрещен', 'error');
-        return;
-    }
-    
-    // Создаем модальное окно админ-панели
-    const adminModal = document.createElement('div');
-    adminModal.className = 'admin-modal';
-    adminModal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 10000;
-        padding: 20px;
-        animation: fadeIn 0.3s ease;
-    `;
-    
-    adminModal.innerHTML = `
-        <div style="
-            background: white;
-            border-radius: 20px;
-            width: 100%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            animation: slideUp 0.4s ease;
-        ">
-            <div style="
-                padding: 25px;
-                border-bottom: 1px solid var(--gray-200);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                background: linear-gradient(135deg, #10B981, #059669);
-                border-radius: 20px 20px 0 0;
-                color: white;
-            ">
-                <h2 style="margin: 0; font-size: 24px;">
-                    <i class="fas fa-user-shield"></i> Панель администратора
-                </h2>
-                <button id="closeAdminPanel" style="
-                    background: rgba(255,255,255,0.2);
-                    border: none;
-                    color: white;
-                    font-size: 24px;
-                    cursor: pointer;
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 10px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                ">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div style="padding: 25px;">
-                <div style="margin-bottom: 30px;">
-                    <h3 style="color: var(--gray-700); margin-bottom: 15px;">
-                        <i class="fas fa-user-plus"></i> Создать нового пользователя
-                    </h3>
-                    
-                    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                        <div style="flex: 1;">
-                            <input type="text" id="adminUsername" placeholder="Логин пользователя" 
-                                   style="width: 100%; padding: 12px; border: 2px solid var(--gray-200); border-radius: 10px;">
-                        </div>
-                        <div style="flex: 1;">
-                            <input type="password" id="adminPassword" placeholder="Пароль (мин. 6 символов)" 
-                                   style="width: 100%; padding: 12px; border: 2px solid var(--gray-200); border-radius: 10px;">
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <select id="adminWorkspace" 
-                                style="width: 100%; padding: 12px; border: 2px solid var(--gray-200); border-radius: 10px;">
-                            <option value="">Выберите пространство</option>
-                        </select>
-                    </div>
-                    
-                    <button id="createUserBtn" style="
-                        background: linear-gradient(135deg, #3B82F6, #2563EB);
-                        color: white;
-                        border: none;
-                        padding: 14px 28px;
-                        border-radius: 10px;
-                        font-size: 16px;
-                        font-weight: 600;
-                        cursor: pointer;
-                        width: 100%;
-                    ">
-                        <i class="fas fa-user-plus"></i> Создать пользователя
-                    </button>
-                    
-                    <div id="adminMessage" style="
-                        margin-top: 15px;
-                        padding: 12px;
-                        border-radius: 8px;
-                        display: none;
-                    "></div>
-                </div>
-                
-                <div>
-                    <h3 style="color: var(--gray-700); margin-bottom: 15px;">
-                        <i class="fas fa-chart-bar"></i> Статистика системы
-                    </h3>
-                    
-                    <div style="
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                        gap: 15px;
-                        margin-bottom: 20px;
-                    ">
-                        <div style="
-                            background: var(--gray-50);
-                            padding: 15px;
-                            border-radius: 10px;
-                            text-align: center;
-                        ">
-                            <div style="font-size: 24px; font-weight: bold; color: #3B82F6;" id="adminTotalUsers">
-                                <i class="fas fa-users"></i> ...
-                            </div>
-                            <div style="color: var(--gray-600); font-size: 14px;">Пользователей</div>
-                        </div>
-                        
-                        <div style="
-                            background: var(--gray-50);
-                            padding: 15px;
-                            border-radius: 10px;
-                            text-align: center;
-                        ">
-                            <div style="font-size: 24px; font-weight: bold; color: #10B981;" id="adminTotalWorkspaces">
-                                <i class="fas fa-layer-group"></i> ...
-                            </div>
-                            <div style="color: var(--gray-600); font-size: 14px;">Пространств</div>
-                        </div>
-                        
-                        <div style="
-                            background: var(--gray-50);
-                            padding: 15px;
-                            border-radius: 10px;
-                            text-align: center;
-                        ">
-                            <div style="font-size: 24px; font-weight: bold; color: #8B5CF6;" id="adminTotalTasks">
-                                <i class="fas fa-tasks"></i> ${tasks.length}
-                            </div>
-                            <div style="color: var(--gray-600); font-size: 14px;">Задач в системе</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="usersListContainer" style="margin-top: 30px;">
-                    <h3 style="color: var(--gray-700); margin-bottom: 15px;">
-                        <i class="fas fa-list"></i> Список пользователей
-                    </h3>
-                    <div style="
-                        background: var(--gray-50);
-                        padding: 15px;
-                        border-radius: 10px;
-                        min-height: 100px;
-                        text-align: center;
-                    " id="adminUsersList">
-                        <i class="fas fa-spinner fa-spin"></i> Загрузка пользователей...
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(adminModal);
-    
-    // Загружаем данные для админ-панели
-    loadAdminData();
-    
-    // Обработчики событий для админ-панели
-    document.getElementById('closeAdminPanel').addEventListener('click', () => {
-        adminModal.remove();
-    });
-    
-    document.getElementById('createUserBtn').addEventListener('click', async () => {
-        await createUserFromAdminPanel();
-    });
-    
-    // Закрытие по клику вне модального окна
-    adminModal.addEventListener('click', (e) => {
-        if (e.target === adminModal) {
-            adminModal.remove();
-        }
-    });
-}
-
-// Загрузка данных для админ-панели
-async function loadAdminData() {
-    if (!adminMode) return;
-    
-    try {
-        // Загружаем пространства для выпадающего списка
-        const workspaces = await window.supabaseAuth.supabase
-            .from('workspace')
-            .select('*')
-            .order('name');
-        
-        if (workspaces.data) {
-            const select = document.getElementById('adminWorkspace');
-            select.innerHTML = '<option value="">Выберите пространство</option>';
-            
-            workspaces.data.forEach(workspace => {
-                const option = document.createElement('option');
-                option.value = workspace.id;
-                option.textContent = workspace.name;
-                select.appendChild(option);
-            });
-        }
-        
-        // Загружаем статистику
-        const usersCount = await window.supabaseAuth.supabase
-            .from('app_users')
-            .select('count', { count: 'exact' });
-            
-        const workspacesCount = await window.supabaseAuth.supabase
-            .from('workspace')
-            .select('count', { count: 'exact' });
-        
-        // Обновляем статистику
-        if (usersCount.data) {
-            document.getElementById('adminTotalUsers').innerHTML = 
-                `<i class="fas fa-users"></i> ${usersCount.count}`;
-        }
-        
-        if (workspacesCount.data) {
-            document.getElementById('adminTotalWorkspaces').innerHTML = 
-                `<i class="fas fa-layer-group"></i> ${workspacesCount.count}`;
-        }
-        
-        // Загружаем список пользователей
-        await loadAdminUsersList();
-        
-    } catch (error) {
-        console.error('Ошибка загрузки данных админ-панели:', error);
-        showAdminMessage('Ошибка загрузки данных', 'error');
-    }
-}
-
-// Загрузка списка пользователей для админ-панели
-async function loadAdminUsersList() {
-    try {
-        const users = await window.supabaseAuth.supabase
-            .from('app_users')
-            .select(`
-                *,
-                workspace:workspace_id(name)
-            `)
-            .order('created_at', { ascending: false });
-        
-        if (users.data) {
-            const container = document.getElementById('adminUsersList');
-            if (users.data.length === 0) {
-                container.innerHTML = '<div style="color: var(--gray-500);">Нет пользователей</div>';
-                return;
-            }
-            
-            let html = '<div style="overflow-x: auto;">';
-            html += '<table style="width: 100%; border-collapse: collapse;">';
-            html += `
-                <thead>
-                    <tr style="background: var(--gray-100);">
-                        <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--gray-200);">Логин</th>
-                        <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--gray-200);">Пространство</th>
-                        <th style="padding: 10px; text-align: left; border-bottom: 2px solid var(--gray-200);">Дата создания</th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
-            
-            users.data.forEach(user => {
-                const workspaceName = user.workspace ? user.workspace.name : 'Неизвестно';
-                const isCurrentUser = user.username === currentUser.username;
-                
-                html += `
-                    <tr style="border-bottom: 1px solid var(--gray-100); ${isCurrentUser ? 'background: #F0F9FF;' : ''}">
-                        <td style="padding: 10px;">
-                            ${user.username} 
-                            ${isCurrentUser ? '<span style="color: #10B981; font-weight: bold;">(Вы)</span>' : ''}
-                        </td>
-                        <td style="padding: 10px;">${workspaceName}</td>
-                        <td style="padding: 10px;">${new Date(user.created_at).toLocaleDateString('ru-RU')}</td>
-                    </tr>
-                `;
-            });
-            
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки списка пользователей:', error);
-        document.getElementById('adminUsersList').innerHTML = 
-            '<div style="color: #EF4444;">Ошибка загрузки пользователей</div>';
-    }
-}
-
-// Создание пользователя из админ-панели
-async function createUserFromAdminPanel() {
-    const username = document.getElementById('adminUsername').value.trim();
-    const password = document.getElementById('adminPassword').value.trim();
-    const workspaceId = document.getElementById('adminWorkspace').value;
-    
-    if (!username || !password || !workspaceId) {
-        showAdminMessage('Заполните все поля', 'error');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showAdminMessage('Пароль должен быть не менее 6 символов', 'error');
-        return;
-    }
-    
-    if (username.length < 3) {
-        showAdminMessage('Логин должен быть не менее 3 символов', 'error');
-        return;
-    }
-    
-    try {
-        // Используем функцию adminCreateUser из supabaseAuth (если она есть)
-        if (window.supabaseAuth.adminCreateUser) {
-            const result = await window.supabaseAuth.adminCreateUser(username, password, workspaceId);
-            
-            if (result.success) {
-                showAdminMessage(`✅ Пользователь "${username}" создан успешно!`, 'success');
-                
-                // Очищаем поля
-                document.getElementById('adminUsername').value = '';
-                document.getElementById('adminPassword').value = '';
-                
-                // Обновляем список пользователей
-                await loadAdminUsersList();
-                
-                // Обновляем статистику
-                await loadAdminData();
-            } else {
-                showAdminMessage(`❌ Ошибка: ${result.error}`, 'error');
-            }
-        } else {
-            // Альтернативный метод - напрямую через Supabase
-            const passwordHash = await hashPassword(password);
-            
-            const { data, error } = await window.supabaseAuth.supabase
-                .from('app_users')
-                .insert([{
-                    username: username,
-                    password_hash: passwordHash,
-                    workspace_id: workspaceId
-                }])
-                .select()
-                .single();
-            
-            if (error) {
-                if (error.code === '23505') {
-                    throw new Error('Пользователь с таким логином уже существует');
-                }
-                throw error;
-            }
-            
-            showAdminMessage(`✅ Пользователь "${username}" создан успешно!`, 'success');
-            document.getElementById('adminUsername').value = '';
-            document.getElementById('adminPassword').value = '';
-            
-            await loadAdminUsersList();
-            await loadAdminData();
-        }
-        
-    } catch (error) {
-        console.error('Ошибка создания пользователя:', error);
-        showAdminMessage(`❌ Ошибка: ${error.message}`, 'error');
-    }
-}
-
-// Вспомогательная функция для хэширования пароля
-async function hashPassword(password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Показать сообщение в админ-панели
-function showAdminMessage(message, type) {
-    const element = document.getElementById('adminMessage');
-    if (!element) return;
-    
-    element.innerHTML = message;
-    element.style.display = 'block';
-    element.style.background = type === 'success' ? '#D1FAE5' : '#FEE2E2';
-    element.style.color = type === 'success' ? '#065F46' : '#991B1B';
-    element.style.border = `1px solid ${type === 'success' ? '#A7F3D0' : '#FECACA'}`;
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            element.style.display = 'none';
-        }, 5000);
-    }
-}
 
 // Вспомогательные функции
 function getPriorityText(priority) {
