@@ -665,25 +665,52 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        // Загрузка пространств
-        async function loadWorkspaces() {
-            try {
-                const { data, error } = await supabase
-                    .from('workspace')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                
-                workspaces = data || [];
-                displayWorkspaces();
-                updateWorkspaceSelect();
-                
-            } catch (error) {
-                console.error('Ошибка загрузки пространств:', error);
-                showMessage('workspaceMessage', 'Ошибка загрузки пространств: ' + error.message, 'error');
+        // Загрузка пространств - ИСПРАВЛЕННАЯ ВЕРСИЯ
+            async function loadWorkspaces() {
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/workspace?select=*`, {
+                        headers: {
+                            'apikey': SUPABASE_SERVICE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Проверяем, что data существует и является массивом
+                    if (!data || !Array.isArray(data)) {
+                        console.log('Данные не массив:', data);
+                        throw new Error('Некорректный формат данных от сервера');
+                    }
+                    
+                    displayWorkspaces(data);
+                    updateWorkspaceSelect(data);
+                    
+                } catch (error) {
+                    console.error('Ошибка загрузки пространств:', error);
+                    document.getElementById('workspacesList').innerHTML = `
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: #EF4444;">
+                                Ошибка загрузки: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+                    
+                    // Показываем более подробную информацию для отладки
+                    showMessage('statusMessage', 
+                        `Ошибка загрузки пространств: ${error.message}<br>
+                        Проверьте:<br>
+                        1. Service Role Key в коде<br>
+                        2. Таблицы в базе данных<br>
+                        3. CORS настройки в Supabase`, 
+                        'error');
+                }
             }
-        }
         
         // Отображение пространств
         function displayWorkspaces() {
