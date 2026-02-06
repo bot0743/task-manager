@@ -8,3 +8,7 @@ VALUES (
     encode(digest('пароль', 'sha256'), 'hex'),
     'id_пространства'
 );
+-- Изменение пароля у пользователя
+UPDATE app_users 
+SET password_hash = encode(digest('новый_пароль', 'sha256'), 'hex')
+WHERE username = 'имя_пользователя';
